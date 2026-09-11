@@ -1,8 +1,6 @@
 // REST API Client Service for Frontend
 
-const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const cleanUrl = rawUrl.replace(/\/+$/, '');
-const API_BASE_URL = cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export const fetchApi = async (endpoint, method = 'GET', body = null) => {
   try {
