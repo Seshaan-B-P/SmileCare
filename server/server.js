@@ -147,6 +147,15 @@ const server = http.createServer(async (req, res) => {
   const pathname = url.pathname;
 
   try {
+    if (pathname === '/' || pathname === '') {
+      return sendJSON(res, 200, {
+        status: 'OK',
+        system: 'SmileCare Express Backend Server v1.0',
+        message: 'SmileCare API Server is live and healthy.',
+        endpoints: ['/api/health', '/api/data', '/api/sync']
+      });
+    }
+
     if (pathname === '/api/health' && req.method === 'GET') {
       const mongoState = mongoose.connection.readyState;
       const isConnected = mongoState === 1;

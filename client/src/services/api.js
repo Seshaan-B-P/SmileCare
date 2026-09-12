@@ -1,6 +1,7 @@
 // REST API Client Service for Frontend
 
-const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const FALLBACK_API_URL = 'https://smilecare-2bik.onrender.com/api';
+const rawUrl = import.meta.env.VITE_API_URL || FALLBACK_API_URL;
 const cleanUrl = rawUrl.replace(/\/+$/, '');
 const API_BASE_URL = cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
 
