@@ -123,10 +123,10 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
                   <td className="p-4 pl-6">
                     <div className="flex items-center gap-3">
                       {p.avatar ? (
-                        <img 
-                          src={p.avatar} 
-                          alt={p.name} 
-                          className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-brand-500/30 shrink-0" 
+                        <img
+                          src={p.avatar}
+                          alt={p.name}
+                          className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-brand-500/30 shrink-0"
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-500 to-tealbrand-500 text-white font-black flex items-center justify-center text-xs shadow-sm shrink-0">
@@ -143,7 +143,18 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
                     <div className="text-slate-900 font-extrabold flex items-center gap-1.5">
                       <span>{p.phone}</span>
                       <a
-                        href={`https://wa.me/${p.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`வணக்கம் ${p.name} அவர்களே, SmileCare Dental Clinic-ல் இருந்து வாழ்த்துகள்!`)}`}
+                        href={`https://wa.me/${p.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`உங்கள் patient registration வெற்றிகரமாக முடிந்துவிட்டது. ✅
+
+📋 Patient ID: ${p.patientId}
+👤 Patient Name: ${p.name}
+📞 Contact: ${p.phone}
+
+இனி உங்கள் appointments, consultations, treatment details மற்றும் billing தகவல்களை SmileCare மூலம் எளிதாக நிர்வகிக்கலாம்.
+
+உங்களுக்கு ஏதேனும் dental care தேவைப்பட்டால், எங்களை தொடர்பு கொள்ள தயங்க வேண்டாம்.
+
+💙 SmileCare Dental Clinic
+Your Smile, Our Care!`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
