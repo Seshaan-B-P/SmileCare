@@ -17,18 +17,18 @@ import { Modal } from '../components/common/Modal';
 const getPatientRegistrationMessage = (p) => {
   const pid = p.id || p.patientId || p._id || 'PAT-NEW';
   return [
-    `உங்கள் Patient Registration வெற்றிகரமாக முடிந்துவிட்டது. \u2705`,
+    `*உங்கள் Patient Registration வெற்றிகரமாக முடிந்துவிட்டது!* ✓`,
     ``,
-    `\uD83C\uDD94 Patient ID: ${pid}`,
-    `\uD83D\uDC64 Patient Name: ${p.name || ''}`,
-    `\uD83D\uDCDE Contact: ${p.phone || ''}`,
+    `• *Patient ID:* ${pid}`,
+    `• *Patient Name:* ${p.name || ''}`,
+    `• *Contact:* ${p.phone || ''}`,
     ``,
     `இனி உங்கள் appointments, consultations, treatment details மற்றும் billing தகவல்களை SmileCare மூலம் எளிதாக நிர்வகிக்கலாம்.`,
     ``,
     `உங்களுக்கு ஏதேனும் dental care தேவைப்பட்டால், எங்களை தொடர்பு கொள்ள தயங்க வேண்டாம்.`,
     ``,
-    `\uD83D\uDC99 SmileCare Dental Clinic`,
-    `Your Smile, Our Care!`
+    `*SmileCare Dental Clinic*`,
+    `_Your Smile, Our Care!_`
   ].join('\n');
 };
 
