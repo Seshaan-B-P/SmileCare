@@ -239,7 +239,7 @@ export const DataProvider = ({ children }) => {
           condition,
           status: status || 'Planned',
           notes: notes || '',
-          updatedBy: 'Dr. Tharma',
+          updatedBy: 'Dr. Tharma P',
           updatedAt: new Date().toISOString().split('T')[0]
         }
       };
@@ -251,7 +251,7 @@ export const DataProvider = ({ children }) => {
           [patientId]: updatedChart
         },
         activityLog: [
-          { id: `act_${Date.now()}`, time: 'Just now', user: 'Dr. Tharma', action: `Updated tooth #${toothId} condition to ${condition}` },
+          { id: `act_${Date.now()}`, time: 'Just now', user: 'Dr. Tharma P', action: `Updated tooth #${toothId} condition to ${condition}` },
           ...prev.activityLog
         ]
       };
@@ -287,7 +287,7 @@ export const DataProvider = ({ children }) => {
       consultations: [newConsultation, ...prev.consultations],
       followUps: newFollowUp ? [newFollowUp, ...prev.followUps] : prev.followUps,
       activityLog: [
-        { id: `act_${Date.now()}`, time: 'Just now', user: 'Dr. Tharma', action: `Saved consultation for ${newConsultation.patientName}` },
+        { id: `act_${Date.now()}`, time: 'Just now', user: 'Dr. Tharma P', action: `Saved consultation for ${newConsultation.patientName}` },
         ...prev.activityLog
       ]
     }));
@@ -351,7 +351,7 @@ export const DataProvider = ({ children }) => {
       patientName: targetFollowUp.patientName,
       patientPhone: targetFollowUp.patientPhone,
       doctorId: 'usr_doc_1',
-      doctorName: 'Dr. Tharma',
+      doctorName: 'Dr. Tharma P',
       date: targetFollowUp.scheduledDate,
       timeSlot: '10:00 AM',
       serviceName: targetFollowUp.reason,

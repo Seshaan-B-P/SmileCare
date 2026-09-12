@@ -29,7 +29,7 @@ const PORT = process.env.PORT || 5000;
 const DEFAULT_SEED_DATA = {
   currentUser: {
     id: 'usr_doc_1',
-    name: 'Dr. Tharma, MDS',
+    name: 'Dr. Tharma P, MDS',
     email: 'doctor@smilecare.com',
     role: 'Doctor',
     title: 'Senior Endodontist & Medical Director',
@@ -47,7 +47,7 @@ const DEFAULT_SEED_DATA = {
   users: [
     {
       id: 'usr_doc_1',
-      name: 'Dr. Tharma, MDS',
+      name: 'Dr. Tharma P, MDS',
       email: 'doctor@smilecare.com',
       password: 'Doctor@123',
       role: 'Doctor',

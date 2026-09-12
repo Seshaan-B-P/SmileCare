@@ -46,7 +46,7 @@ export const DoctorProfile = () => {
   const fileInputRef = useRef(null);
 
   // Form States
-  const [name, setName] = useState(doctorData.name || 'Dr. Tharma, MDS');
+  const [name, setName] = useState(doctorData.name || 'Dr. Tharma P, MDS');
   const [title, setTitle] = useState(doctorData.title || 'Senior Endodontist & Medical Director');
   const [qualification, setQualification] = useState(doctorData.qualification || 'MDS - Endodontics & Conservative Dentistry');
   const [regNo, setRegNo] = useState(doctorData.regNo || 'TNDC-REG-48291');
@@ -62,7 +62,7 @@ export const DoctorProfile = () => {
 
   useEffect(() => {
     if (currentUser) {
-      setName(currentUser.name || (isDoctor ? 'Dr. Tharma, MDS' : 'Clinic Staff Member'));
+      setName(currentUser.name || (isDoctor ? 'Dr. Tharma P, MDS' : 'Clinic Staff Member'));
       setTitle(currentUser.title || (isDoctor ? 'Senior Endodontist & Medical Director' : 'Dental Hygienist'));
       setQualification(currentUser.qualification || (isDoctor ? 'MDS - Endodontics & Conservative Dentistry' : 'Diploma in Dental Hygiene'));
       setRegNo(currentUser.regNo || currentUser.idProofNo || currentUser.id || (isDoctor ? 'TNDC-REG-48291' : 'STF-ID-1001'));
@@ -252,8 +252,8 @@ export const DoctorProfile = () => {
               <button
                 onClick={() => setIsEditing(!isEditing)}
                 className={`px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 ${isEditing
-                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
-                    : 'bg-gradient-to-r from-brand-600 to-tealbrand-600 hover:opacity-95 text-white shadow-brand-500/20'
+                  ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                  : 'bg-gradient-to-r from-brand-600 to-tealbrand-600 hover:opacity-95 text-white shadow-brand-500/20'
                   }`}
               >
                 {isEditing ? (

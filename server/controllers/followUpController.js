@@ -11,7 +11,7 @@ export const confirmWhatsAppAutoBooking = (followUpId, db) => {
     patientName: followUp.patientName,
     patientPhone: followUp.patientPhone,
     doctorId: 'usr_doc_1',
-    doctorName: 'Dr. Tharma',
+    doctorName: 'Dr. Tharma P',
     date: followUp.scheduledDate,
     timeSlot: '10:00 AM',
     serviceName: followUp.reason,

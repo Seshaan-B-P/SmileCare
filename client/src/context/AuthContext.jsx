@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
       const docUserInDb = usersList.find(u => u.email.toLowerCase() === cleanEmail || u.role === 'Doctor');
       const docUser = {
         id: 'usr_doc_1',
-        name: 'Dr. Tharma, MDS',
+        name: 'Dr. Tharma P, MDS',
         email: 'doctor@smilecare.com',
         title: 'Senior Endodontist & Medical Director',
         regNo: 'TNDC-REG-48291',

@@ -20,7 +20,7 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
       patientName: patientObj.name,
       patientPhone: patientObj.phone,
       doctorId: 'usr_doc_1',
-      doctorName: 'Dr. Tharma',
+      doctorName: 'Dr. Tharma P',
       date,
       timeSlot,
       serviceName,
