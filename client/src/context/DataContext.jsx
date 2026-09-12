@@ -23,7 +23,7 @@ function mergeRecords(cloudList, localList, idKey = 'id') {
 }
 
 export const DataProvider = ({ children }) => {
-  const { updateCurrentUser } = useAuth();
+  const { currentUser, isDoctor, activeRole, updateCurrentUser } = useAuth();
   const isCloudLoaded = useRef(false);
 
   const [data, setData] = useState(() => {
@@ -183,6 +183,53 @@ export const DataProvider = ({ children }) => {
     }).catch(err => console.warn('MongoDB Atlas sync error:', err));
   }, [data]);
 
+  // Helper to log all user and staff activities consistently
+  const logActivity = (actionText, customActor = null, isStaffOverride = null) => {
+    const isDoc = isDoctor || activeRole === 'Doctor' || currentUser?.role === 'Doctor';
+    const isStaff = isStaffOverride !== null ? isStaffOverride : !isDoc;
+    const userName = customActor || currentUser?.name || (isDoc ? 'Dr. Tharma P' : 'Staff');
+    const userRole = isDoc ? 'Doctor' : 'Staff';
+
+    return {
+      id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      time: 'Just now',
+      timestamp: Date.now(),
+      user: userName,
+      role: userRole,
+      isStaff,
+      action: actionText
+    };
+  };
+
+  // Cross-tab synchronization: notify Doctor when Staff performs an action in another tab/window
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'smilecare_db_v2' && e.newValue) {
+        try {
+          const updated = JSON.parse(e.newValue);
+          setData(prev => {
+            const isDoc = isDoctor || activeRole === 'Doctor' || currentUser?.role === 'Doctor';
+            if (isDoc && updated.activityLog && updated.activityLog.length > (prev.activityLog?.length || 0)) {
+              const latest = updated.activityLog[0];
+              if (latest && (latest.isStaff || latest.role === 'Staff')) {
+                showToast(`🔔 Staff Alert: ${latest.user} - ${latest.action}`, 'info');
+              }
+            }
+            return {
+              ...prev,
+              ...updated
+            };
+          });
+        } catch (err) {
+          console.error('Storage sync error:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [isDoctor, activeRole, currentUser]);
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type, id: Date.now() });
     setTimeout(() => setToast(null), 3500);
@@ -201,24 +248,25 @@ export const DataProvider = ({ children }) => {
       ...patientObj
     };
 
+    const newLog = logActivity(`Added new patient: ${newPatient.name} (${newId})`);
     setData(prev => ({
       ...prev,
       patients: [newPatient, ...prev.patients],
-      activityLog: [
-        { id: `act_${Date.now()}`, time: 'Just now', user: 'Staff', action: `Added new patient: ${newPatient.name}` },
-        ...prev.activityLog
-      ]
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast(`Patient ${newPatient.name} created successfully!`);
     return newPatient;
   };
 
   const updatePatient = (id, updatedFields) => {
+    const targetPatient = data.patients.find(p => p.id === id);
+    const newLog = logActivity(`Updated record for patient: ${targetPatient?.name || id}`);
     setData(prev => {
       const nextPatients = prev.patients.map(p => p.id === id ? { ...p, ...updatedFields } : p);
       const nextData = {
         ...prev,
-        patients: nextPatients
+        patients: nextPatients,
+        activityLog: [newLog, ...prev.activityLog]
       };
       fetchApi('/sync', 'POST', nextData).then(res => {
         if (res && res.success) {
@@ -231,6 +279,8 @@ export const DataProvider = ({ children }) => {
   };
 
   const addPatientDocument = (patientId, docObj) => {
+    const targetPatient = data.patients.find(p => p.id === patientId);
+    const newLog = logActivity(`Uploaded document "${docObj.name}" for patient ${targetPatient?.name || patientId}`);
     setData(prev => ({
       ...prev,
       patients: prev.patients.map(p => {
@@ -239,7 +289,8 @@ export const DataProvider = ({ children }) => {
           return { ...p, documents: [docObj, ...docs] };
         }
         return p;
-      })
+      }),
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast(`Uploaded document: ${docObj.name}`);
   };
@@ -254,35 +305,41 @@ export const DataProvider = ({ children }) => {
       ...aptObj
     };
 
+    const newLog = logActivity(`Booked appointment for ${newApt.patientName} (Token #${tokenNo}, ${newApt.timeSlot || 'Scheduled'})`);
     setData(prev => ({
       ...prev,
       appointments: [newApt, ...prev.appointments],
-      activityLog: [
-        { id: `act_${Date.now()}`, time: 'Just now', user: 'Staff', action: `Booked appointment for ${newApt.patientName} (Token #${tokenNo})` },
-        ...prev.activityLog
-      ]
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast(`Appointment booked for ${newApt.patientName} (Token #${tokenNo})`);
     return newApt;
   };
 
   const updateAppointmentStatus = (aptId, newStatus) => {
+    const targetApt = data.appointments.find(a => a.id === aptId);
+    const newLog = logActivity(`Changed appointment status to "${newStatus}" for ${targetApt?.patientName || aptId}`);
     setData(prev => ({
       ...prev,
-      appointments: prev.appointments.map(a => a.id === aptId ? { ...a, status: newStatus } : a)
+      appointments: prev.appointments.map(a => a.id === aptId ? { ...a, status: newStatus } : a),
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast(`Appointment status updated to ${newStatus}`);
   };
 
   const rescheduleAppointment = (aptId, newDate, newTimeSlot) => {
+    const targetApt = data.appointments.find(a => a.id === aptId);
+    const newLog = logActivity(`Rescheduled appointment for ${targetApt?.patientName || aptId} to ${newDate} at ${newTimeSlot}`);
     setData(prev => ({
       ...prev,
-      appointments: prev.appointments.map(a => a.id === aptId ? { ...a, date: newDate, timeSlot: newTimeSlot, status: 'Scheduled' } : a)
+      appointments: prev.appointments.map(a => a.id === aptId ? { ...a, date: newDate, timeSlot: newTimeSlot, status: 'Scheduled' } : a),
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast('Appointment rescheduled successfully');
   };
 
   const updateToothCondition = (patientId, toothId, condition, status, notes) => {
+    const targetPatient = data.patients.find(p => p.id === patientId);
+    const newLog = logActivity(`Updated tooth #${toothId} condition to ${condition} for ${targetPatient?.name || patientId}`, null, false);
     setData(prev => {
       const patientCharts = prev.dentalCharts[patientId] || {};
       const updatedChart = {
@@ -292,7 +349,7 @@ export const DataProvider = ({ children }) => {
           condition,
           status: status || 'Planned',
           notes: notes || '',
-          updatedBy: 'Dr. Tharma P',
+          updatedBy: currentUser?.name || 'Dr. Tharma P',
           updatedAt: new Date().toISOString().split('T')[0]
         }
       };
@@ -303,10 +360,7 @@ export const DataProvider = ({ children }) => {
           ...prev.dentalCharts,
           [patientId]: updatedChart
         },
-        activityLog: [
-          { id: `act_${Date.now()}`, time: 'Just now', user: 'Dr. Tharma P', action: `Updated tooth #${toothId} condition to ${condition}` },
-          ...prev.activityLog
-        ]
+        activityLog: [newLog, ...prev.activityLog]
       };
     });
     showToast(`Tooth #${toothId} condition updated`);
@@ -335,14 +389,12 @@ export const DataProvider = ({ children }) => {
       };
     }
 
+    const newLog = logActivity(`Saved clinical consultation for ${newConsultation.patientName}`, null, false);
     setData(prev => ({
       ...prev,
       consultations: [newConsultation, ...prev.consultations],
       followUps: newFollowUp ? [newFollowUp, ...prev.followUps] : prev.followUps,
-      activityLog: [
-        { id: `act_${Date.now()}`, time: 'Just now', user: 'Dr. Tharma P', action: `Saved consultation for ${newConsultation.patientName}` },
-        ...prev.activityLog
-      ]
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast('Consultation saved successfully');
     return newConsultation;
@@ -358,19 +410,19 @@ export const DataProvider = ({ children }) => {
       ...invoiceObj
     };
 
+    const newLog = logActivity(`Generated Invoice ${newId} (₹${newInv.totalAmount}) for ${newInv.patientName || 'Patient'}`);
     setData(prev => ({
       ...prev,
       invoices: [newInv, ...prev.invoices],
-      activityLog: [
-        { id: `act_${Date.now()}`, time: 'Just now', user: 'Staff', action: `Generated Invoice ${newId} (₹${newInv.totalAmount})` },
-        ...prev.activityLog
-      ]
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast(`Invoice ${newId} created (₹${newInv.totalAmount})`);
     return newInv;
   };
 
   const recordPayment = (invoiceId, amountPaid, paymentMethod) => {
+    const targetInv = data.invoices.find(i => i.id === invoiceId);
+    const newLog = logActivity(`Recorded payment of ₹${amountPaid} via ${paymentMethod} for Invoice #${targetInv?.receiptNo || invoiceId}`);
     setData(prev => ({
       ...prev,
       invoices: prev.invoices.map(inv => {
@@ -381,15 +433,19 @@ export const DataProvider = ({ children }) => {
           return { ...inv, paidAmount: updatedPaid, balanceDue: Math.max(0, balance), paymentStatus: status, paymentMethod };
         }
         return inv;
-      })
+      }),
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast('Payment recorded successfully');
   };
 
   const sendWhatsAppReminder = (followUpId) => {
+    const targetFollowUp = data.followUps.find(f => f.id === followUpId);
+    const newLog = logActivity(`Sent WhatsApp reminder to ${targetFollowUp?.patientName || 'Patient'}`);
     setData(prev => ({
       ...prev,
-      followUps: prev.followUps.map(f => f.id === followUpId ? { ...f, whatsAppSent: true, whatsAppSentDate: new Date().toLocaleString() } : f)
+      followUps: prev.followUps.map(f => f.id === followUpId ? { ...f, whatsAppSent: true, whatsAppSentDate: new Date().toLocaleString() } : f),
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast('WhatsApp reminder sent with direct appointment booking link!');
   };
@@ -414,14 +470,12 @@ export const DataProvider = ({ children }) => {
       notes: 'Auto-assigned & confirmed via WhatsApp Reminder link'
     };
 
+    const newLog = logActivity(`Auto-booked & confirmed slot for ${targetFollowUp.patientName} on ${targetFollowUp.scheduledDate}`, 'WhatsApp Bot', true);
     setData(prev => ({
       ...prev,
       followUps: prev.followUps.map(f => f.id === followUpId ? { ...f, status: 'Confirmed via WhatsApp' } : f),
       appointments: [newApt, ...prev.appointments],
-      activityLog: [
-        { id: `act_${Date.now()}`, time: 'Just now', user: 'WhatsApp Bot', action: `Auto-booked & confirmed slot for ${targetFollowUp.patientName} on ${targetFollowUp.scheduledDate}` },
-        ...prev.activityLog
-      ]
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast(`Appointment auto-booked & confirmed for ${targetFollowUp.patientName}!`);
   };
@@ -451,29 +505,32 @@ export const DataProvider = ({ children }) => {
       },
       ...staffObj
     };
+    const newLog = logActivity(`Registered staff member: ${newStaff.name} (${newStaff.title})`, null, false);
     setData(prev => ({
       ...prev,
       users: [...(prev.users || []), newStaff],
-      activityLog: [
-        { id: `act_${Date.now()}`, time: 'Just now', user: 'Doctor', action: `Added staff: ${newStaff.name} (${newStaff.title} - ${newStaff.workShift})` },
-        ...prev.activityLog
-      ]
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast(`Staff member ${newStaff.name} registered successfully!`);
   };
 
   const updateStaffPermissions = (staffId, permissions) => {
+    const targetStaff = data.users?.find(u => u.id === staffId);
+    const newLog = logActivity(`Updated permissions for staff: ${targetStaff?.name || staffId}`, null, false);
     setData(prev => ({
       ...prev,
-      users: prev.users.map(u => u.id === staffId ? { ...u, permissions } : u)
+      users: prev.users.map(u => u.id === staffId ? { ...u, permissions } : u),
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast('Staff permissions updated');
   };
 
   const updateClinicProfile = (profileObj) => {
+    const newLog = logActivity(`Updated clinic profile & settings`);
     setData(prev => ({
       ...prev,
-      clinicProfile: { ...prev.clinicProfile, ...profileObj }
+      clinicProfile: { ...prev.clinicProfile, ...profileObj },
+      activityLog: [newLog, ...prev.activityLog]
     }));
     showToast('Clinic settings saved');
   };

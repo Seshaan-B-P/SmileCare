@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Search, 
   Bell, 
@@ -9,7 +9,8 @@ import {
   Sparkles,
   Settings as SettingsIcon,
   ChevronDown,
-  Camera
+  Camera,
+  UserCog
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -21,6 +22,84 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  // Track last read notification to only show red dot on genuinely new notifications
+  const [lastReadNotifId, setLastReadNotifId] = useState(() => {
+    try {
+      return localStorage.getItem('smilecare_last_read_notif') || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [notificationTab, setNotificationTab] = useState('all'); // 'all' | 'staff'
+
+  const notifRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter staff actions specifically for Doctor alerts
+  const staffActivities = useMemo(() => {
+    return (activityLog || []).filter(act => act.isStaff || act.role === 'Staff' || act.user?.toLowerCase().includes('staff'));
+  }, [activityLog]);
+
+  // Determine if there is any new / unread notification
+  const { hasNewNotifications, unreadCount } = useMemo(() => {
+    if (!activityLog || activityLog.length === 0) {
+      return { hasNewNotifications: false, unreadCount: 0 };
+    }
+    const latestId = activityLog[0]?.id;
+    if (!lastReadNotifId) {
+      // If user has never opened notifications yet, show new dot if activities exist
+      return { hasNewNotifications: true, unreadCount: activityLog.length };
+    }
+    const lastReadIndex = activityLog.findIndex(act => act.id === lastReadNotifId);
+    if (lastReadIndex === -1) {
+      // All current notifications are newer than the saved read ID
+      return { hasNewNotifications: true, unreadCount: activityLog.length };
+    }
+    return {
+      hasNewNotifications: lastReadIndex > 0,
+      unreadCount: lastReadIndex
+    };
+  }, [activityLog, lastReadNotifId]);
+
+  const displayedNotifications = useMemo(() => {
+    if (isDoctor && notificationTab === 'staff') {
+      return staffActivities;
+    }
+    return activityLog || [];
+  }, [activityLog, staffActivities, isDoctor, notificationTab]);
+
+  const handleToggleNotifications = () => {
+    const willOpen = !showNotifications;
+    setShowNotifications(willOpen);
+    if (willOpen && activityLog && activityLog.length > 0) {
+      const topId = activityLog[0]?.id;
+      if (topId) {
+        setLastReadNotifId(topId);
+        try {
+          localStorage.setItem('smilecare_last_read_notif', topId);
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    }
+  };
 
   const filteredPatients = searchQuery.trim() 
     ? patients.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.phone.includes(searchQuery))
@@ -98,40 +177,121 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
       {/* Right Controls: Notifications & Profile Pill */}
       <div className="flex items-center gap-3">
         {/* Notifications Dropdown */}
-        <div className="relative">
+        <div className="relative" ref={notifRef}>
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2.5 rounded-2xl text-slate-600 hover:bg-slate-100 relative transition-colors border border-transparent hover:border-slate-200"
-            title="Activity Notifications"
+            id="navbar-notification-bell"
+            onClick={handleToggleNotifications}
+            className="p-2.5 rounded-2xl text-slate-600 hover:bg-slate-100 relative transition-colors border border-transparent hover:border-slate-200 cursor-pointer"
+            title={hasNewNotifications ? `${unreadCount} new notification${unreadCount > 1 ? 's' : ''}` : 'Activity Notifications'}
           >
             <Bell className="w-4.5 h-4.5" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-pulse"></span>
+            {hasNewNotifications && (
+              <span 
+                id="notification-red-dot" 
+                className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" 
+              />
+            )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-3xl shadow-2xl border border-slate-200/90 py-3 z-50 animate-fade-in">
+            <div className="absolute right-0 top-full mt-2 w-84 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-200/90 py-3 z-50 animate-fade-in">
               <div className="px-4 pb-2 border-b border-slate-100 flex items-center justify-between">
                 <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-brand-600" /> Recent Clinic Activity
+                  <Sparkles className="w-3.5 h-3.5 text-brand-600" /> {isDoctor ? 'Clinic & Staff Alerts' : 'Recent Clinic Activity'}
                 </h4>
-                <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">Live Stream</span>
+                <div className="flex items-center gap-1.5">
+                  {unreadCount > 0 ? (
+                    <span className="text-[10px] bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full font-bold">
+                      {unreadCount} New
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">Live Stream</span>
+                  )}
+                </div>
               </div>
-              <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
-                {activityLog.slice(0, 5).map(act => (
-                  <div key={act.id} className="px-4 py-2.5 hover:bg-slate-50 transition-colors">
-                    <div className="text-xs font-bold text-slate-800 leading-snug">{act.action}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
-                      <Clock className="w-3 h-3 text-slate-400" /> {act.time} • {act.user}
-                    </div>
+
+              {/* Doctor-exclusive Staff Activity Filter */}
+              {isDoctor && (
+                <div className="flex items-center px-3 pt-2 pb-1.5 gap-1.5 border-b border-slate-100 bg-slate-50/60">
+                  <button
+                    type="button"
+                    onClick={() => setNotificationTab('all')}
+                    className={`flex-1 py-1.5 px-2.5 text-[11px] font-bold rounded-xl transition-all cursor-pointer ${
+                      notificationTab === 'all'
+                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-black'
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                    }`}
+                  >
+                    All Activities ({activityLog?.length || 0})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNotificationTab('staff')}
+                    className={`flex-1 py-1.5 px-2.5 text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      notificationTab === 'staff'
+                        ? 'bg-amber-500 text-white shadow-xs font-black'
+                        : 'text-amber-800 hover:bg-amber-100/60 bg-amber-50 border border-amber-200/60'
+                    }`}
+                  >
+                    <UserCog className="w-3.5 h-3.5" />
+                    Staff Actions ({staffActivities.length})
+                  </button>
+                </div>
+              )}
+
+              <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                {displayedNotifications && displayedNotifications.length > 0 ? (
+                  displayedNotifications.slice(0, 8).map((act, index) => {
+                    const isNew = notificationTab === 'all' && index < unreadCount;
+                    const isStaff = act.isStaff || act.role === 'Staff' || act.user?.toLowerCase().includes('staff');
+                    return (
+                      <div 
+                        key={act.id} 
+                        className={`px-4 py-2.5 transition-colors ${
+                          isStaff 
+                            ? 'bg-amber-50/30 hover:bg-amber-50/70 border-l-2 border-amber-400' 
+                            : isNew 
+                              ? 'bg-brand-50/40 hover:bg-brand-50/70' 
+                              : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-xs font-bold text-slate-800 leading-snug">{act.action}</div>
+                          <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                            {isStaff && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-800 border border-amber-200/80">
+                                Staff Alert
+                              </span>
+                            )}
+                            {isNew && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" title="New notification"></span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-between font-medium">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" /> {act.time}
+                          </span>
+                          <span className={isStaff ? 'text-amber-700 font-bold flex items-center gap-1' : 'text-slate-500'}>
+                            {isStaff && <UserCog className="w-3 h-3 text-amber-600" />}
+                            {act.user} {isStaff && !act.user.toLowerCase().includes('staff') ? '(Staff)' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="px-4 py-8 text-center text-xs text-slate-400 font-medium">
+                    {notificationTab === 'staff' ? 'No staff activity recorded yet' : 'No recent activity'}
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}
         </div>
 
         {/* User Profile Pill Menu */}
-        <div className="relative">
+        <div className="relative" ref={profileRef}>
           <button
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-3 p-1.5 pl-2 pr-3 rounded-2xl hover:bg-slate-100/80 transition-all border border-slate-200/70 shadow-2xs"
