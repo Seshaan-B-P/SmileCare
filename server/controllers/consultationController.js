@@ -17,7 +17,7 @@ export const updateDentalChart = (patientId, toothId, condition, status, notes, 
     condition,
     status: status || 'Planned',
     notes: notes || '',
-    updatedBy: 'Dr. Tharama',
+    updatedBy: 'Dr. Tharma',
     updatedAt: new Date().toISOString().split('T')[0]
   };
   return db.dentalCharts[patientId];

@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
           parsed.role = 'Doctor';
         }
         return parsed;
-      } catch (e) {}
+      } catch (e) { }
     }
     return MOCK_SEED_DATA.currentUser;
   });
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
       const docUserInDb = usersList.find(u => u.email.toLowerCase() === cleanEmail || u.role === 'Doctor');
       const docUser = {
         id: 'usr_doc_1',
-        name: 'Dr. Tharama, MDS',
+        name: 'Dr. Tharma, MDS',
         email: 'doctor@smilecare.com',
         title: 'Senior Endodontist & Medical Director',
         regNo: 'TNDC-REG-48291',
@@ -144,7 +144,7 @@ export const AuthProvider = ({ children }) => {
             db.users = db.users.map(u => (u.id === updated.id || u.role === 'Doctor') ? { ...u, ...updated } : u);
           }
           localStorage.setItem('smilecare_db_v2', JSON.stringify(db));
-        } catch (e) {}
+        } catch (e) { }
       }
 
       return updated;

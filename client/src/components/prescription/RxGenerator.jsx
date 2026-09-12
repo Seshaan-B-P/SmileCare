@@ -141,7 +141,7 @@ export const RxGenerator = ({ patient, doctor, onSavePrescription }) => {
                 <p className="text-[10px] text-slate-400 font-medium">Clinic Reg #: CLINIC-MOH-2024-88</p>
               </div>
               <div className="text-right">
-                <h3 className="text-sm font-bold text-slate-800">{doctor?.name || 'Dr. Tharama'}</h3>
+                <h3 className="text-sm font-bold text-slate-800">{doctor?.name || 'Dr. Tharma'}</h3>
                 <p className="text-xs text-slate-500">{doctor?.title || 'Senior Endodontist'}</p>
                 <p className="text-[10px] text-brand-700 font-bold">Reg #: {doctor?.regNo || 'DENT-REG-98412'}</p>
               </div>
@@ -186,7 +186,7 @@ export const RxGenerator = ({ patient, doctor, onSavePrescription }) => {
               </div>
               <div className="text-center">
                 <div className="w-36 h-10 border-b border-slate-400 mb-1 flex items-end justify-center text-xs font-serif text-slate-700 italic">
-                  Dr. Tharama
+                  Dr. Tharma
                 </div>
                 <p className="text-[10px] font-bold text-slate-600 uppercase">Doctor's Signature & Seal</p>
               </div>

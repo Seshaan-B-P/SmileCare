@@ -20,7 +20,7 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
       patientName: patientObj.name,
       patientPhone: patientObj.phone,
       doctorId: 'usr_doc_1',
-      doctorName: 'Dr. Tharama',
+      doctorName: 'Dr. Tharma',
       date,
       timeSlot,
       serviceName,
@@ -105,8 +105,8 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
                 key={s}
                 onClick={() => setTimeSlot(s)}
                 className={`py-2 rounded-xl text-xs font-bold border transition-all ${timeSlot === s
-                    ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                   }`}
               >
                 {s}

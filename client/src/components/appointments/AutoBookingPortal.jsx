@@ -33,14 +33,14 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
               </div>
               <h3 className="text-xl font-black text-slate-900">Appointment Confirmed!</h3>
               <p className="text-xs text-slate-600 max-w-xs mx-auto">
-                Thank you, <strong className="text-slate-900">{followUp.patientName}</strong>. Your dental follow-up has been reserved & synced with Dr. Tharama' chair queue.
+                Thank you, <strong className="text-slate-900">{followUp.patientName}</strong>. Your dental follow-up has been reserved & synced with Dr. Tharma' chair queue.
               </p>
 
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs font-bold text-slate-800 text-left space-y-1 mt-4">
                 <div><span className="text-slate-500 font-normal">Patient Name:</span> {followUp.patientName}</div>
                 <div><span className="text-slate-500 font-normal">Procedure:</span> {followUp.reason}</div>
                 <div><span className="text-slate-500 font-normal">Date & Time:</span> <span className="text-brand-600">{followUp.scheduledDate} at 10:00 AM</span></div>
-                <div><span className="text-slate-500 font-normal">Doctor:</span> Dr. Tharama, MDS</div>
+                <div><span className="text-slate-500 font-normal">Doctor:</span> Dr. Tharma, MDS</div>
               </div>
 
               <button
@@ -74,7 +74,7 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
                   <div><strong className="text-slate-700">Reason:</strong> <span className="text-slate-900 font-bold">{followUp.reason}</span></div>
                   <div><strong className="text-slate-700">Recommended Date:</strong> <span className="text-tealbrand-700 font-bold">{followUp.scheduledDate}</span></div>
                   <div><strong className="text-slate-700">Suggested Time:</strong> <span className="text-tealbrand-700 font-bold">10:00 AM Slot</span></div>
-                  <div><strong className="text-slate-700">Assigned Dentist:</strong> Dr. Tharama, MDS</div>
+                  <div><strong className="text-slate-700">Assigned Dentist:</strong> Dr. Tharma, MDS</div>
                 </div>
               </div>
 

@@ -127,7 +127,7 @@ export const RX_TEMPLATES = [
 export const MOCK_SEED_DATA = {
   currentUser: {
     id: 'usr_doc_1',
-    name: 'Dr. Tharama, MDS',
+    name: 'Dr. Tharma, MDS',
     email: 'doctor@smilecare.com',
     role: 'Doctor',
     title: 'Senior Endodontist & Medical Director',
@@ -137,7 +137,7 @@ export const MOCK_SEED_DATA = {
   users: [
     {
       id: 'usr_doc_1',
-      name: 'Dr. Tharama, MDS',
+      name: 'Dr. Tharma, MDS',
       email: 'doctor@smilecare.com',
       password: 'Doctor@123',
       role: 'Doctor',

@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  User, 
-  ShieldCheck, 
-  Award, 
-  Clock, 
-  Phone, 
-  Mail, 
-  FileText, 
-  Save, 
-  Edit3, 
-  Stethoscope, 
-  IndianRupee, 
-  Calendar, 
-  Briefcase, 
-  Star, 
-  CheckCircle2, 
-  Activity, 
+import {
+  User,
+  ShieldCheck,
+  Award,
+  Clock,
+  Phone,
+  Mail,
+  FileText,
+  Save,
+  Edit3,
+  Stethoscope,
+  IndianRupee,
+  Calendar,
+  Briefcase,
+  Star,
+  CheckCircle2,
+  Activity,
   Sparkles,
   Camera,
   Layers,
@@ -46,7 +46,7 @@ export const DoctorProfile = () => {
   const fileInputRef = useRef(null);
 
   // Form States
-  const [name, setName] = useState(doctorData.name || 'Dr. Tharama, MDS');
+  const [name, setName] = useState(doctorData.name || 'Dr. Tharma, MDS');
   const [title, setTitle] = useState(doctorData.title || 'Senior Endodontist & Medical Director');
   const [qualification, setQualification] = useState(doctorData.qualification || 'MDS - Endodontics & Conservative Dentistry');
   const [regNo, setRegNo] = useState(doctorData.regNo || 'TNDC-REG-48291');
@@ -62,7 +62,7 @@ export const DoctorProfile = () => {
 
   useEffect(() => {
     if (currentUser) {
-      setName(currentUser.name || (isDoctor ? 'Dr. Tharama, MDS' : 'Clinic Staff Member'));
+      setName(currentUser.name || (isDoctor ? 'Dr. Tharma, MDS' : 'Clinic Staff Member'));
       setTitle(currentUser.title || (isDoctor ? 'Senior Endodontist & Medical Director' : 'Dental Hygienist'));
       setQualification(currentUser.qualification || (isDoctor ? 'MDS - Endodontics & Conservative Dentistry' : 'Diploma in Dental Hygiene'));
       setRegNo(currentUser.regNo || currentUser.idProofNo || currentUser.id || (isDoctor ? 'TNDC-REG-48291' : 'STF-ID-1001'));
@@ -202,7 +202,7 @@ export const DoctorProfile = () => {
         <div className="px-6 sm:px-8 pb-6 relative">
           {/* Avatar & Action Button Row */}
           <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-4">
-            <div 
+            <div
               className="relative group cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
               title="Click to change profile picture"
@@ -212,7 +212,7 @@ export const DoctorProfile = () => {
                 alt={name}
                 className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-cover ring-4 ring-white shadow-xl bg-white transition-all duration-300 group-hover:brightness-90 group-hover:scale-[1.02]"
               />
-              
+
               {/* Interactive Hover Overlay with Camera Icon */}
               <div className="absolute inset-0 rounded-3xl bg-black/45 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center text-white gap-1 p-2">
                 <Camera className="w-6 h-6 animate-pulse" />
@@ -251,11 +251,10 @@ export const DoctorProfile = () => {
               </button>
               <button
                 onClick={() => setIsEditing(!isEditing)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 ${
-                  isEditing
+                className={`px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 ${isEditing
                     ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
                     : 'bg-gradient-to-r from-brand-600 to-tealbrand-600 hover:opacity-95 text-white shadow-brand-500/20'
-                }`}
+                  }`}
               >
                 {isEditing ? (
                   <>
@@ -360,7 +359,7 @@ export const DoctorProfile = () => {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div 
+                  <div
                     className="relative group cursor-pointer shrink-0"
                     onClick={() => fileInputRef.current?.click()}
                     title="Click to select new image"
