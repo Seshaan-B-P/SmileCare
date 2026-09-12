@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserCog, Plus, Activity, Clock, Award, DollarSign, ShieldAlert, Phone, FileText, CheckSquare, ShieldCheck } from 'lucide-react';
+import { UserCog, Plus, Activity, Clock, Award, IndianRupee, ShieldAlert, Phone, FileText, CheckSquare, ShieldCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Modal } from '../components/common/Modal';
 
@@ -143,7 +143,7 @@ export const StaffManagement = () => {
 
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/60">
                 <span className="text-[10px] font-bold uppercase text-slate-400 block flex items-center gap-1">
-                  <DollarSign className="w-3 h-3 text-emerald-600" /> Monthly Salary
+                  <IndianRupee className="w-3 h-3 text-emerald-600" /> Monthly Salary
                 </span>
                 <span className="font-black text-slate-900 text-[11px] block mt-0.5">
                   ₹{u.salary ? u.salary.toLocaleString('en-IN') : '25,000'} / mo
