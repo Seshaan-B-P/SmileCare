@@ -1,10 +1,29 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { MOCK_SEED_DATA } from '../utils/dentalData';
 import { fetchApi } from '../services/api';
 
 const DataContext = createContext();
 
+function mergeRecords(cloudList, localList, idKey = 'id') {
+  const map = new Map();
+  (localList || []).forEach(item => {
+    if (item) {
+      const key = item[idKey] || item._id;
+      if (key) map.set(String(key).toLowerCase(), item);
+    }
+  });
+  (cloudList || []).forEach(item => {
+    if (item) {
+      const key = item[idKey] || item._id;
+      if (key) map.set(String(key).toLowerCase(), item);
+    }
+  });
+  return Array.from(map.values());
+}
+
 export const DataProvider = ({ children }) => {
+  const isCloudLoaded = useRef(false);
+
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem('smilecare_db_v2');
     if (saved) {
@@ -45,7 +64,17 @@ export const DataProvider = ({ children }) => {
   });
 
   const syncToCloud = async (overrideData = null) => {
-    const payload = overrideData || data;
+    let payload = overrideData || data;
+    try {
+      const saved = localStorage.getItem('smilecare_db_v2');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.patients) && parsed.patients.length > (payload.patients?.length || 0)) {
+          payload = { ...payload, patients: parsed.patients };
+        }
+      }
+    } catch (e) {}
+
     try {
       const res = await fetchApi('/sync', 'POST', payload);
       if (res && res.success) {
@@ -82,6 +111,7 @@ export const DataProvider = ({ children }) => {
 
     // Fetch live data from MongoDB Atlas
     fetchApi('/data', 'GET').then(res => {
+      isCloudLoaded.current = true;
       if (res && res.success && res.data) {
         setData(prev => {
           const rawUsers = (res.data.users || []).filter(u => u.name !== 'Mark Davis');
@@ -95,30 +125,31 @@ export const DataProvider = ({ children }) => {
           });
           const uniqueUsers = Array.from(userMap.values());
 
-          const hasMongoPatients = Array.isArray(res.data.patients) && res.data.patients.length > 0;
-          const hasMongoAppointments = Array.isArray(res.data.appointments) && res.data.appointments.length > 0;
-          const hasMongoConsultations = Array.isArray(res.data.consultations) && res.data.consultations.length > 0;
-          const hasMongoInvoices = Array.isArray(res.data.invoices) && res.data.invoices.length > 0;
-          const hasMongoUsers = uniqueUsers.length > 0;
-          const hasMongoCharts = res.data.dentalCharts && Object.keys(res.data.dentalCharts).length > 0;
-          const hasMongoFollowUps = Array.isArray(res.data.followUps) && res.data.followUps.length > 0;
-          const hasMongoActivity = Array.isArray(res.data.activityLog) && res.data.activityLog.length > 0;
+          const mergedPatients = mergeRecords(res.data.patients, prev.patients, 'id');
+          const mergedAppointments = mergeRecords(res.data.appointments, prev.appointments, 'id');
+          const mergedConsultations = mergeRecords(res.data.consultations, prev.consultations, 'id');
+          const mergedInvoices = mergeRecords(res.data.invoices, prev.invoices, 'id');
+          const mergedUsers = uniqueUsers.length > 0 ? uniqueUsers : prev.users;
+          const mergedCharts = { ...(prev.dentalCharts || {}), ...(res.data.dentalCharts || {}) };
+          const mergedFollowUps = mergeRecords(res.data.followUps, prev.followUps, 'id');
+          const mergedActivity = mergeRecords(res.data.activityLog, prev.activityLog, 'id');
 
           const merged = {
             ...prev,
-            patients: hasMongoPatients ? res.data.patients : prev.patients,
-            appointments: hasMongoAppointments ? res.data.appointments : prev.appointments,
-            consultations: hasMongoConsultations ? res.data.consultations : prev.consultations,
-            invoices: hasMongoInvoices ? res.data.invoices : prev.invoices,
-            users: hasMongoUsers ? uniqueUsers : prev.users,
-            dentalCharts: hasMongoCharts ? res.data.dentalCharts : prev.dentalCharts,
-            followUps: hasMongoFollowUps ? res.data.followUps : prev.followUps,
-            activityLog: hasMongoActivity ? res.data.activityLog : prev.activityLog,
+            patients: mergedPatients,
+            appointments: mergedAppointments,
+            consultations: mergedConsultations,
+            invoices: mergedInvoices,
+            users: mergedUsers,
+            dentalCharts: mergedCharts,
+            followUps: mergedFollowUps,
+            activityLog: mergedActivity,
             clinicProfile: res.data.clinicProfile || prev.clinicProfile
           };
 
-          // If MongoDB Atlas database was just initialized and empty, push local records up to Atlas!
-          if (!hasMongoPatients && prev.patients.length > 0) {
+          // If local records exist that were not yet in cloud, push merged state up to Atlas!
+          const cloudPatientCount = Array.isArray(res.data.patients) ? res.data.patients.length : 0;
+          if (mergedPatients.length > cloudPatientCount) {
             fetchApi('/sync', 'POST', merged).then(() => {
               setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
             }).catch(console.warn);
@@ -127,11 +158,16 @@ export const DataProvider = ({ children }) => {
           return merged;
         });
       }
-    }).catch(err => console.warn('Fetch from MongoDB Atlas failed, using local storage:', err));
+    }).catch(err => {
+      isCloudLoaded.current = true;
+      console.warn('Fetch from MongoDB Atlas failed, using local storage:', err);
+    });
   }, []);
 
   useEffect(() => {
     localStorage.setItem('smilecare_db_v2', JSON.stringify(data));
+    // Guard against auto-syncing uninitialized empty state on initial mount
+    if (!isCloudLoaded.current) return;
     fetchApi('/sync', 'POST', data).then(res => {
       if (res && res.success) {
         setCloudSyncStatus(prev => ({ ...prev, connected: true, lastSync: new Date().toLocaleTimeString() }));
@@ -474,6 +510,7 @@ export const DataProvider = ({ children }) => {
     setData(emptyState);
     localStorage.setItem('smilecare_db_v2', JSON.stringify(emptyState));
     localStorage.removeItem('smilecare_db_v1');
+    fetchApi('/sync', 'POST', { ...emptyState, forceClear: true }).catch(console.warn);
     showToast('All system records cleared successfully', 'info');
   };
 

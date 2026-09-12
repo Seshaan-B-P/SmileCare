@@ -177,27 +177,27 @@ const server = http.createServer(async (req, res) => {
         dbState = { ...dbState, ...payload };
 
         try {
-          if (Array.isArray(payload.patients)) {
+          if (Array.isArray(payload.patients) && (payload.patients.length > 0 || payload.forceClear)) {
             const cleanPatients = sanitizeDocs(payload.patients, 'id');
             await Patient.deleteMany({});
             if (cleanPatients.length > 0) await Patient.insertMany(cleanPatients, { ordered: false });
           }
-          if (Array.isArray(payload.appointments)) {
+          if (Array.isArray(payload.appointments) && (payload.appointments.length > 0 || payload.forceClear)) {
             const cleanAppointments = sanitizeDocs(payload.appointments, 'id');
             await Appointment.deleteMany({});
             if (cleanAppointments.length > 0) await Appointment.insertMany(cleanAppointments, { ordered: false });
           }
-          if (Array.isArray(payload.consultations)) {
+          if (Array.isArray(payload.consultations) && (payload.consultations.length > 0 || payload.forceClear)) {
             const cleanConsultations = sanitizeDocs(payload.consultations, 'id');
             await Consultation.deleteMany({});
             if (cleanConsultations.length > 0) await Consultation.insertMany(cleanConsultations, { ordered: false });
           }
-          if (Array.isArray(payload.invoices)) {
+          if (Array.isArray(payload.invoices) && (payload.invoices.length > 0 || payload.forceClear)) {
             const cleanInvoices = sanitizeDocs(payload.invoices, 'id');
             await Invoice.deleteMany({});
             if (cleanInvoices.length > 0) await Invoice.insertMany(cleanInvoices, { ordered: false });
           }
-          if (Array.isArray(payload.users)) {
+          if (Array.isArray(payload.users) && (payload.users.length > 0 || payload.forceClear)) {
             const cleanUsers = sanitizeDocs(payload.users, 'id');
             await User.deleteMany({});
             if (cleanUsers.length > 0) await User.insertMany(cleanUsers, { ordered: false });
@@ -222,15 +222,17 @@ const server = http.createServer(async (req, res) => {
                 });
               }
             });
-            await DentalChart.deleteMany({});
-            if (chartEntries.length > 0) await DentalChart.insertMany(chartEntries, { ordered: false });
+            if (chartEntries.length > 0 || payload.forceClear) {
+              await DentalChart.deleteMany({});
+              if (chartEntries.length > 0) await DentalChart.insertMany(chartEntries, { ordered: false });
+            }
           }
-          if (Array.isArray(payload.followUps)) {
+          if (Array.isArray(payload.followUps) && (payload.followUps.length > 0 || payload.forceClear)) {
             const cleanFollowUps = sanitizeDocs(payload.followUps, 'id');
             await FollowUp.deleteMany({});
             if (cleanFollowUps.length > 0) await FollowUp.insertMany(cleanFollowUps, { ordered: false });
           }
-          if (Array.isArray(payload.activityLog)) {
+          if (Array.isArray(payload.activityLog) && (payload.activityLog.length > 0 || payload.forceClear)) {
             const cleanActivity = sanitizeDocs(payload.activityLog, 'id');
             await ActivityLog.deleteMany({});
             if (cleanActivity.length > 0) await ActivityLog.insertMany(cleanActivity, { ordered: false });

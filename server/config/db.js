@@ -15,6 +15,7 @@ const connectDB = async () => {
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/smilecare_db';
     await mongoose.connect(mongoURI, {
+      dbName: 'smilecare',
       serverSelectionTimeoutMS: 8000
     });
     const isAtlas = mongoURI.includes('mongodb.net');
