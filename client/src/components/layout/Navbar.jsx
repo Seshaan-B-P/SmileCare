@@ -16,7 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 
 export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
-  const { currentUser, activeRole, logout, isDoctor } = useAuth();
+  const { currentUser, activeRole, logout, isDoctor, hasPermission } = useAuth();
   const { patients, activityLog } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -340,15 +340,17 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
               >
                 <Camera className="w-4 h-4 text-tealbrand-600" /> Change Profile Photo
               </button>
-              <button
-                onClick={() => {
-                  setActiveTab('settings');
-                  setShowProfileMenu(false);
-                }}
-                className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 font-bold transition-colors"
-              >
-                <SettingsIcon className="w-4 h-4 text-slate-400" /> Clinic Settings
-              </button>
+              {(isDoctor || (hasPermission && hasPermission('settings'))) && (
+                <button
+                  onClick={() => {
+                    setActiveTab('settings');
+                    setShowProfileMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 font-bold transition-colors"
+                >
+                  <SettingsIcon className="w-4 h-4 text-slate-400" /> Clinic Settings
+                </button>
+              )}
               <button
                 onClick={logout}
                 className="w-full text-left px-4 py-2.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 border-t border-slate-100 font-extrabold transition-colors"

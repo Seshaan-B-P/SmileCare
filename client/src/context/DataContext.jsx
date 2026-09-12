@@ -157,9 +157,14 @@ export const DataProvider = ({ children }) => {
             }).catch(console.warn);
           }
 
-          // Sync doctor and user credentials from MongoDB Atlas cloud directly to AuthContext
+          // Sync doctor and user credentials from MongoDB Atlas cloud directly to AuthContext ONLY IF currently logged-in as Doctor
+          const savedUser = localStorage.getItem('smilecare_user');
+          let currentSession = null;
+          try { currentSession = savedUser ? JSON.parse(savedUser) : null; } catch (e) {}
+          const isCurrentSessionDoctor = currentSession?.role === 'Doctor' || currentSession?.email === 'doctor@smilecare.com';
+
           const cloudDoc = res.data.currentUser || (uniqueUsers || []).find(u => u.role === 'Doctor' || u.id === 'usr_doc_1');
-          if (cloudDoc && cloudDoc.avatar && updateCurrentUser) {
+          if (isCurrentSessionDoctor && cloudDoc && cloudDoc.avatar && updateCurrentUser) {
             updateCurrentUser(cloudDoc);
           }
 

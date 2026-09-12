@@ -409,6 +409,8 @@ export const StaffManagement = () => {
                   className="w-full p-2.5 bg-slate-50 rounded-xl border text-xs font-bold"
                 />
               </div>
+            </div>
+
             {/* Module Access Permissions in Add Modal */}
             <div className="pt-2 border-t border-slate-100">
               <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5">

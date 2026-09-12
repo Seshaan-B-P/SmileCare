@@ -21,7 +21,7 @@ import { useData } from '../../context/DataContext';
 import { Logo } from '../common/Logo';
 
 export const Sidebar = ({ activeTab, setActiveTab, onBack, canGoBack = false, previousTab = null }) => {
-  const { currentUser, isDoctor } = useAuth();
+  const { currentUser, isDoctor, hasPermission } = useAuth();
   const { followUps, appointments, users } = useData();
 
   // Retrieve current staff's real-time permissions
@@ -41,7 +41,7 @@ export const Sidebar = ({ activeTab, setActiveTab, onBack, canGoBack = false, pr
     { id: 'staff', label: 'Staff Management', icon: UserCog, role: 'doctorOnly', permKey: 'staff' },
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3, role: 'doctorOnly', permKey: 'reports' },
     { id: 'doctor-profile', label: isDoctor ? 'Doctor Profile' : 'My Profile', icon: UserCheck, role: 'all' },
-    { id: 'settings', label: 'Clinic Settings', icon: Settings, role: 'all', permKey: 'settings' },
+    { id: 'settings', label: 'Clinic Settings', icon: Settings, role: 'doctorOnly', permKey: 'settings' },
   ];
 
   return (
@@ -124,16 +124,20 @@ export const Sidebar = ({ activeTab, setActiveTab, onBack, canGoBack = false, pr
         {menuItems.map(item => {
           // If item is restricted to doctorOnly and user is not Doctor
           if (item.role === 'doctorOnly' && !isDoctor) {
-            const hasExplicitStaffAccess = staffPermissions && staffPermissions[item.permKey];
+            const hasExplicitStaffAccess = Boolean(
+              (hasPermission && hasPermission(item.permKey)) ||
+              (staffPermissions && staffPermissions[item.permKey])
+            );
             if (!hasExplicitStaffAccess) return null;
           }
 
           // Enforce module access permissions for Staff users
           if (!isDoctor && item.permKey) {
             const hasAccess = Boolean(
+              (hasPermission && hasPermission(item.permKey)) ||
               staffPermissions?.[item.permKey] ||
-              (item.permKey === 'consultation' && staffPermissions?.consultations) ||
-              (item.permKey === 'consultations' && staffPermissions?.consultation)
+              (item.permKey === 'consultation' && (staffPermissions?.consultations || (hasPermission && hasPermission('consultation')))) ||
+              (item.permKey === 'consultations' && (staffPermissions?.consultation || (hasPermission && hasPermission('consultations'))))
             );
             if (!hasAccess) return null;
           }
