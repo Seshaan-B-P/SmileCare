@@ -1,12 +1,16 @@
 import React from 'react';
 import { UserPlus, CalendarPlus, FileText, ArrowRight, IndianRupee } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const QuickActions = ({ onOpenAddPatient, onOpenNewApt, onOpenConsultation, onOpenBilling }) => {
+  const { isDoctor, hasPermission } = useAuth();
+
   const actions = [
     {
       title: 'Add Patient',
       desc: 'Register new dental patient',
       icon: UserPlus,
+      permKey: 'patients',
       gradient: 'from-brand-600 via-brand-700 to-brand-800 shadow-brand-500/20',
       onClick: onOpenAddPatient
     },
@@ -14,6 +18,7 @@ export const QuickActions = ({ onOpenAddPatient, onOpenNewApt, onOpenConsultatio
       title: 'New Appointment',
       desc: 'Schedule appointment slot',
       icon: CalendarPlus,
+      permKey: 'appointments',
       gradient: 'from-tealbrand-600 via-tealbrand-700 to-tealbrand-800 shadow-tealbrand-500/20',
       onClick: onOpenNewApt
     },
@@ -21,6 +26,7 @@ export const QuickActions = ({ onOpenAddPatient, onOpenNewApt, onOpenConsultatio
       title: 'New Consultation',
       desc: 'Start dental exam & Rx',
       icon: FileText,
+      permKey: 'consultation',
       gradient: 'from-purple-600 via-purple-700 to-purple-800 shadow-purple-500/20',
       onClick: onOpenConsultation
     },
@@ -28,14 +34,18 @@ export const QuickActions = ({ onOpenAddPatient, onOpenNewApt, onOpenConsultatio
       title: 'Generate Bill',
       desc: 'Issue invoice & payment',
       icon: IndianRupee,
+      permKey: 'billing',
       gradient: 'from-emerald-600 via-emerald-700 to-emerald-800 shadow-emerald-500/20',
       onClick: onOpenBilling
     }
   ];
 
+  const visibleActions = actions.filter(act => isDoctor || hasPermission(act.permKey));
+  if (visibleActions.length === 0) return null;
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {actions.map((act, idx) => {
+    <div className={`grid grid-cols-1 sm:grid-cols-2 ${visibleActions.length >= 4 ? 'lg:grid-cols-4' : visibleActions.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
+      {visibleActions.map((act, idx) => {
         const Icon = act.icon;
         return (
           <button

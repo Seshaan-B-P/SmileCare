@@ -516,13 +516,36 @@ export const DataProvider = ({ children }) => {
 
   const updateStaffPermissions = (staffId, permissions) => {
     const targetStaff = data.users?.find(u => u.id === staffId);
-    const newLog = logActivity(`Updated permissions for staff: ${targetStaff?.name || staffId}`, null, false);
-    setData(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === staffId ? { ...u, permissions } : u),
-      activityLog: [newLog, ...prev.activityLog]
-    }));
-    showToast('Staff permissions updated');
+    const newLog = logActivity(`Updated module permissions for staff: ${targetStaff?.name || staffId}`, null, false);
+    
+    setData(prev => {
+      const nextUsers = prev.users.map(u => u.id === staffId ? { ...u, permissions } : u);
+      const nextData = {
+        ...prev,
+        users: nextUsers,
+        activityLog: [newLog, ...prev.activityLog]
+      };
+      
+      try {
+        localStorage.setItem('smilecare_db_v2', JSON.stringify(nextData));
+      } catch (e) {}
+
+      fetchApi('/sync', 'POST', nextData).then(res => {
+        if (res && res.success) {
+          setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
+        }
+      }).catch(console.warn);
+
+      return nextData;
+    });
+
+    if (currentUser && (currentUser.id === staffId || (targetStaff && currentUser.email?.toLowerCase() === targetStaff.email?.toLowerCase()))) {
+      if (updateCurrentUser) {
+        updateCurrentUser({ permissions });
+      }
+    }
+
+    showToast(`Permissions updated for ${targetStaff?.name || 'Staff'}`);
   };
 
   const updateClinicProfile = (profileObj) => {

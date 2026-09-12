@@ -23,8 +23,11 @@ export const StaffManagement = () => {
   // Initial permissions state
   const [permissions, setPermissions] = useState({
     patients: true,
+    appointments: true,
+    consultation: false,
     consultations: false,
     billing: true,
+    whatsapp: true,
     reports: false,
     settings: false,
     staff: false,
@@ -61,7 +64,17 @@ export const StaffManagement = () => {
   };
 
   const togglePermission = (user, permKey) => {
-    const updated = { ...user.permissions, [permKey]: !user.permissions[permKey] };
+    const currentVal = Boolean(
+      user.permissions?.[permKey] ||
+      (permKey === 'consultation' && user.permissions?.consultations) ||
+      (permKey === 'consultations' && user.permissions?.consultation)
+    );
+    const updated = { 
+      ...user.permissions, 
+      [permKey]: !currentVal,
+      ...(permKey === 'consultation' ? { consultations: !currentVal } : {}),
+      ...(permKey === 'consultations' ? { consultation: !currentVal } : {})
+    };
     updateStaffPermissions(user.id, updated);
   };
 
@@ -173,24 +186,34 @@ export const StaffManagement = () => {
               </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
-                  { key: 'patients', label: 'Patient Directory' },
-                  { key: 'consultations', label: 'Clinical Exam & Rx' },
-                  { key: 'billing', label: 'Billing & Invoices' },
-                  { key: 'reports', label: 'Reports & Financials' },
-                  { key: 'settings', label: 'Clinic Config & Backup' },
-                  { key: 'staff', label: 'Staff Management' }
+                  { key: 'patients', label: 'Patient Directory', desc: 'Patients list & records' },
+                  { key: 'appointments', label: 'Appointments & Queue', desc: 'Bookings & patient queue' },
+                  { key: 'consultation', label: 'Consultation & Chart', desc: 'Clinical notes & tooth charting' },
+                  { key: 'billing', label: 'Billing & Invoices', desc: 'Generate bills & payments' },
+                  { key: 'whatsapp', label: 'WhatsApp Reminders', desc: 'Follow-ups & auto reminders' },
+                  { key: 'reports', label: 'Reports & Financials', desc: 'Clinic reports & ledger' },
+                  { key: 'settings', label: 'Clinic Settings', desc: 'Clinic profile & config' },
+                  { key: 'staff', label: 'Staff Management', desc: 'Staff profiles & permissions' }
                 ].map(p => {
-                  const hasAccess = u.role === 'Doctor' || (u.permissions && u.permissions[p.key]);
+                  const hasAccess = u.role === 'Doctor' || Boolean(
+                    u.permissions && (
+                      u.permissions[p.key] || 
+                      (p.key === 'consultation' && u.permissions.consultations)
+                    )
+                  );
                   return (
-                    <label key={p.key} className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+                    <label key={p.key} className={`flex items-center gap-2.5 p-2 rounded-xl border transition-all cursor-pointer ${hasAccess ? 'bg-brand-50/50 border-brand-200' : 'bg-slate-50 border-slate-200 opacity-60'}`}>
                       <input
                         type="checkbox"
                         checked={hasAccess}
                         disabled={u.role === 'Doctor'}
                         onChange={() => togglePermission(u, p.key)}
-                        className="rounded text-brand-600 focus:ring-brand-500"
+                        className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
                       />
-                      <span className="font-semibold text-slate-700">{p.label}</span>
+                      <div className="min-w-0">
+                        <span className="font-extrabold text-slate-800 block leading-tight">{p.label}</span>
+                        <span className="text-[10px] text-slate-500 font-medium truncate block">{p.desc}</span>
+                      </div>
                     </label>
                   );
                 })}
@@ -385,6 +408,37 @@ export const StaffManagement = () => {
                   onChange={(e) => setIdProofNo(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 rounded-xl border text-xs font-bold"
                 />
+              </div>
+            {/* Module Access Permissions in Add Modal */}
+            <div className="pt-2 border-t border-slate-100">
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5">
+                Module Access Permissions (Select modules staff can access)
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                {[
+                  { key: 'patients', label: 'Patients' },
+                  { key: 'appointments', label: 'Appointments' },
+                  { key: 'consultation', label: 'Consultation' },
+                  { key: 'billing', label: 'Billing' },
+                  { key: 'whatsapp', label: 'WhatsApp' },
+                  { key: 'reports', label: 'Reports' },
+                  { key: 'settings', label: 'Settings' },
+                  { key: 'staff', label: 'Staff Mgmt' }
+                ].map(p => (
+                  <label key={p.key} className={`flex items-center gap-2 p-2 rounded-xl border cursor-pointer transition-all ${permissions[p.key] ? 'bg-brand-50/50 border-brand-200 font-bold text-slate-900' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(permissions[p.key])}
+                      onChange={(e) => setPermissions(prev => ({ 
+                        ...prev, 
+                        [p.key]: e.target.checked,
+                        ...(p.key === 'consultation' ? { consultations: e.target.checked } : {})
+                      }))}
+                      className="rounded text-brand-600 focus:ring-brand-500 w-3.5 h-3.5"
+                    />
+                    <span className="text-[11px] truncate">{p.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
 

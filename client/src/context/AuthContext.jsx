@@ -99,8 +99,25 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (permKey) => {
     if (!currentUser) return false;
-    if (currentUser.role === 'Doctor') return true;
-    return currentUser.permissions ? currentUser.permissions[permKey] : false;
+    if (currentUser.role === 'Doctor' || activeRole === 'Doctor') return true;
+
+    // Check latest permissions from database in case Doctor updated them
+    let perms = currentUser.permissions || {};
+    try {
+      const savedDb = localStorage.getItem('smilecare_db_v2');
+      if (savedDb) {
+        const db = JSON.parse(savedDb);
+        const freshUser = (db.users || []).find(u => u.id === currentUser.id || (u.email && u.email.toLowerCase() === currentUser.email?.toLowerCase()));
+        if (freshUser && freshUser.permissions) {
+          perms = freshUser.permissions;
+        }
+      }
+    } catch (e) {}
+
+    if (permKey === 'consultation' || permKey === 'consultations') {
+      return Boolean(perms.consultation || perms.consultations);
+    }
+    return Boolean(perms[permKey]);
   };
 
   const registerStaff = (staffData) => {

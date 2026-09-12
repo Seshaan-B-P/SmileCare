@@ -22,22 +22,26 @@ import { Logo } from '../common/Logo';
 
 export const Sidebar = ({ activeTab, setActiveTab, onBack, canGoBack = false, previousTab = null }) => {
   const { currentUser, isDoctor } = useAuth();
-  const { followUps, appointments } = useData();
+  const { followUps, appointments, users } = useData();
+
+  // Retrieve current staff's real-time permissions
+  const currentStaff = users?.find(u => u.id === currentUser?.id || (u.email && u.email.toLowerCase() === currentUser?.email?.toLowerCase())) || currentUser;
+  const staffPermissions = isDoctor ? null : (currentStaff?.permissions || currentUser?.permissions || {});
 
   const pendingFollowUpsCount = followUps.filter(f => f.status === 'Pending').length;
   const todayAppointmentsCount = appointments.filter(a => a.date === new Date().toISOString().split('T')[0]).length;
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, role: 'all' },
-    { id: 'patients', label: 'Patient Directory', icon: Users, role: 'all' },
-    { id: 'appointments', label: 'Appointments & Queue', icon: CalendarDays, role: 'all', badge: todayAppointmentsCount ? `${todayAppointmentsCount} Today` : null, badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
-    { id: 'consultation', label: 'Consultation & Chart', icon: Stethoscope, role: 'all' },
-    { id: 'billing', label: 'Billing & Payments', icon: CreditCard, role: 'all' },
-    { id: 'whatsapp', label: 'WhatsApp Reminders', icon: MessageSquareText, role: 'all', badge: pendingFollowUpsCount ? `${pendingFollowUpsCount}` : null, badgeColor: 'bg-tealbrand-500 text-white shadow-sm' },
-    { id: 'staff', label: 'Staff Management', icon: UserCog, role: 'doctorOnly' },
-    { id: 'reports', label: 'Reports & Analytics', icon: BarChart3, role: 'doctorOnly' },
+    { id: 'patients', label: 'Patient Directory', icon: Users, role: 'all', permKey: 'patients' },
+    { id: 'appointments', label: 'Appointments & Queue', icon: CalendarDays, role: 'all', permKey: 'appointments', badge: todayAppointmentsCount ? `${todayAppointmentsCount} Today` : null, badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
+    { id: 'consultation', label: 'Consultation & Chart', icon: Stethoscope, role: 'all', permKey: 'consultation' },
+    { id: 'billing', label: 'Billing & Payments', icon: CreditCard, role: 'all', permKey: 'billing' },
+    { id: 'whatsapp', label: 'WhatsApp Reminders', icon: MessageSquareText, role: 'all', permKey: 'whatsapp', badge: pendingFollowUpsCount ? `${pendingFollowUpsCount}` : null, badgeColor: 'bg-tealbrand-500 text-white shadow-sm' },
+    { id: 'staff', label: 'Staff Management', icon: UserCog, role: 'doctorOnly', permKey: 'staff' },
+    { id: 'reports', label: 'Reports & Analytics', icon: BarChart3, role: 'doctorOnly', permKey: 'reports' },
     { id: 'doctor-profile', label: isDoctor ? 'Doctor Profile' : 'My Profile', icon: UserCheck, role: 'all' },
-    { id: 'settings', label: 'Clinic Settings', icon: Settings, role: 'all' },
+    { id: 'settings', label: 'Clinic Settings', icon: Settings, role: 'all', permKey: 'settings' },
   ];
 
   return (
@@ -118,7 +122,22 @@ export const Sidebar = ({ activeTab, setActiveTab, onBack, canGoBack = false, pr
 
         <div className="px-3 pb-2 text-[10px] font-black uppercase tracking-wider text-slate-500">Navigation Menu</div>
         {menuItems.map(item => {
-          if (item.role === 'doctorOnly' && !isDoctor) return null;
+          // If item is restricted to doctorOnly and user is not Doctor
+          if (item.role === 'doctorOnly' && !isDoctor) {
+            const hasExplicitStaffAccess = staffPermissions && staffPermissions[item.permKey];
+            if (!hasExplicitStaffAccess) return null;
+          }
+
+          // Enforce module access permissions for Staff users
+          if (!isDoctor && item.permKey) {
+            const hasAccess = Boolean(
+              staffPermissions?.[item.permKey] ||
+              (item.permKey === 'consultation' && staffPermissions?.consultations) ||
+              (item.permKey === 'consultations' && staffPermissions?.consultation)
+            );
+            if (!hasAccess) return null;
+          }
+
           const isActive = activeTab === item.id;
           const Icon = item.icon;
 
