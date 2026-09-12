@@ -14,6 +14,24 @@ import {
 import { useData } from '../context/DataContext';
 import { Modal } from '../components/common/Modal';
 
+const getPatientRegistrationMessage = (p) => {
+  const pid = p.id || p.patientId || p._id || 'PAT-NEW';
+  return [
+    `உங்கள் Patient Registration வெற்றிகரமாக முடிந்துவிட்டது. \u2705`,
+    ``,
+    `\uD83C\uDD94 Patient ID: ${pid}`,
+    `\uD83D\uDC64 Patient Name: ${p.name || ''}`,
+    `\uD83D\uDCDE Contact: ${p.phone || ''}`,
+    ``,
+    `இனி உங்கள் appointments, consultations, treatment details மற்றும் billing தகவல்களை SmileCare மூலம் எளிதாக நிர்வகிக்கலாம்.`,
+    ``,
+    `உங்களுக்கு ஏதேனும் dental care தேவைப்பட்டால், எங்களை தொடர்பு கொள்ள தயங்க வேண்டாம்.`,
+    ``,
+    `\uD83D\uDC99 SmileCare Dental Clinic`,
+    `Your Smile, Our Care!`
+  ].join('\n');
+};
+
 export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartConsultation, onCreateInvoice }) => {
   const { consultations, invoices, dentalCharts, addPatientDocument, updatePatient, showToast } = useData();
   const [activeTab, setActiveTab] = useState('medical');
@@ -182,7 +200,7 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
 
           <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs space-y-1">
             <a
-              href={`https://wa.me/${patient.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${patient.name}, greetings from SmileCare Dental Clinic!`)}`}
+              href={`https://wa.me/${patient.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(getPatientRegistrationMessage(patient))}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 font-bold text-emerald-700 hover:underline"

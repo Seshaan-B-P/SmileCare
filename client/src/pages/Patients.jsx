@@ -3,6 +3,24 @@ import { Search, UserPlus, Eye, Calendar } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Modal } from '../components/common/Modal';
 
+const getPatientRegistrationMessage = (p) => {
+  const pid = p.id || p.patientId || p._id || 'PAT-NEW';
+  return [
+    `உங்கள் Patient Registration வெற்றிகரமாக முடிந்துவிட்டது. \u2705`,
+    ``,
+    `\uD83C\uDD94 Patient ID: ${pid}`,
+    `\uD83D\uDC64 Patient Name: ${p.name || ''}`,
+    `\uD83D\uDCDE Contact: ${p.phone || ''}`,
+    ``,
+    `இனி உங்கள் appointments, consultations, treatment details மற்றும் billing தகவல்களை SmileCare மூலம் எளிதாக நிர்வகிக்கலாம்.`,
+    ``,
+    `உங்களுக்கு ஏதேனும் dental care தேவைப்பட்டால், எங்களை தொடர்பு கொள்ள தயங்க வேண்டாம்.`,
+    ``,
+    `\uD83D\uDC99 SmileCare Dental Clinic`,
+    `Your Smile, Our Care!`
+  ].join('\n');
+};
+
 export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
   const { patients, addPatient } = useData();
   const [search, setSearch] = useState('');
@@ -143,18 +161,7 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
                     <div className="text-slate-900 font-extrabold flex items-center gap-1.5">
                       <span>{p.phone}</span>
                       <a
-                        href={`https://wa.me/${p.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`உங்கள் patient registration வெற்றிகரமாக முடிந்துவிட்டது. ✅
-
-📋 Patient ID: ${p.patientId}
-👤 Patient Name: ${p.name}
-📞 Contact: ${p.phone}
-
-இனி உங்கள் appointments, consultations, treatment details மற்றும் billing தகவல்களை SmileCare மூலம் எளிதாக நிர்வகிக்கலாம்.
-
-உங்களுக்கு ஏதேனும் dental care தேவைப்பட்டால், எங்களை தொடர்பு கொள்ள தயங்க வேண்டாம்.
-
-💙 SmileCare Dental Clinic
-Your Smile, Our Care!`)}`}
+                        href={`https://wa.me/${p.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(getPatientRegistrationMessage(p))}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
