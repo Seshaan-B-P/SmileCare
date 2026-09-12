@@ -24,11 +24,33 @@ const getPatientRegistrationMessage = (p) => {
 };
 
 export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
-  const { patients, addPatient } = useData();
+  const { patients, addPatient, showToast } = useData();
   const [search, setSearch] = useState('');
   const [genderFilter, setGenderFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const handleOpenWhatsApp = (e, p) => {
+    e.preventDefault();
+    const msg = getPatientRegistrationMessage(p);
+    const cleanPhone = (p.phone || '').replace(/[^0-9]/g, '');
+
+    // Copy formatted text with all emojis to clipboard as instant backup
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(msg).catch(() => {});
+    }
+    if (showToast) {
+      showToast('Opening WhatsApp... (Message copied to clipboard)');
+    }
+
+    // Use web.whatsapp.com on PC/Desktop to prevent Windows protocol emoji corruption
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const url = isMobile
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`
+      : `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
@@ -162,15 +184,14 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
                   <td className="p-4">
                     <div className="text-slate-900 font-extrabold flex items-center gap-1.5">
                       <span>{p.phone}</span>
-                      <a
-                        href={`https://wa.me/${p.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(getPatientRegistrationMessage(p))}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenWhatsApp(e, p)}
+                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer text-base leading-none"
                         title="Chat on WhatsApp"
                       >
                         💬
-                      </a>
+                      </button>
                     </div>
                     <div className="text-[11px] text-slate-500 font-medium">{p.email}</div>
                   </td>

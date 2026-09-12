@@ -48,6 +48,26 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
   const patientConsultations = consultations.filter(c => c.patientId === patient.id);
   const patientInvoices = invoices.filter(i => i.patientId === patient.id);
 
+  const handleOpenWhatsApp = (e) => {
+    e.preventDefault();
+    const msg = getPatientRegistrationMessage(patient);
+    const cleanPhone = (patient.phone || '').replace(/[^0-9]/g, '');
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(msg).catch(() => {});
+    }
+    if (showToast) {
+      showToast('Opening WhatsApp... (Message copied to clipboard)');
+    }
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const url = isMobile
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`
+      : `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const handlePatientPhotoUpload = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -201,15 +221,14 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
           </div>
 
           <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs space-y-1">
-            <a
-              href={`https://wa.me/${patient.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(getPatientRegistrationMessage(patient))}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 font-bold text-emerald-700 hover:underline"
+            <button
+              type="button"
+              onClick={handleOpenWhatsApp}
+              className="flex items-center gap-2 font-bold text-emerald-700 hover:underline cursor-pointer"
               title="Open WhatsApp Chat"
             >
               <Phone className="w-3.5 h-3.5 text-emerald-600" /> {patient.phone} (WhatsApp 💬)
-            </a>
+            </button>
             <div className="flex items-center gap-2 text-slate-600 font-medium">
               <Mail className="w-3.5 h-3.5 text-slate-400" /> {patient.email}
             </div>
