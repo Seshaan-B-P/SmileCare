@@ -28,6 +28,7 @@ const AppContent = () => {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [navHistory, setNavHistory] = useState([]);
 
   const [showGlobalBooking, setShowGlobalBooking] = useState(false);
   const [showGlobalBilling, setShowGlobalBilling] = useState(false);
@@ -68,13 +69,42 @@ const AppContent = () => {
     return <Login />;
   }
 
-  const handleSelectPatient = (patient) => {
+  const handleNavigate = (newTab, patient = null) => {
+    // Prevent duplicate entries if nothing changed
+    if (newTab === activeTab && (!patient || patient?.id === selectedPatient?.id)) {
+      if (patient !== selectedPatient) setSelectedPatient(patient);
+      return;
+    }
+    setNavHistory(prev => [...prev, { tab: activeTab, patient: selectedPatient }]);
+    setActiveTab(newTab);
     setSelectedPatient(patient);
   };
 
+  const handleBack = () => {
+    if (navHistory.length > 0) {
+      const prev = navHistory[navHistory.length - 1];
+      setNavHistory(h => h.slice(0, -1));
+      setActiveTab(prev.tab);
+      setSelectedPatient(prev.patient || null);
+    } else if (selectedPatient) {
+      setSelectedPatient(null);
+    } else if (activeTab !== 'dashboard') {
+      setActiveTab('dashboard');
+      setSelectedPatient(null);
+    }
+  };
+
+  const canGoBack = navHistory.length > 0 || !!selectedPatient || activeTab !== 'dashboard';
+  const previousTab = navHistory.length > 0 
+    ? navHistory[navHistory.length - 1].tab 
+    : (activeTab !== 'dashboard' ? 'dashboard' : null);
+
+  const handleSelectPatient = (patient) => {
+    handleNavigate('patients', patient);
+  };
+
   const handleStartConsultation = (patient) => {
-    setSelectedPatient(patient);
-    setActiveTab('consultation');
+    handleNavigate('consultation', patient);
   };
 
   const handleBookForPatient = (patient) => {
@@ -84,20 +114,26 @@ const AppContent = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
-      <Sidebar activeTab={activeTab} setActiveTab={(tab) => { setSelectedPatient(null); setActiveTab(tab); }} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={(tab) => handleNavigate(tab, null)}
+        onBack={handleBack}
+        canGoBack={canGoBack}
+        previousTab={previousTab}
+      />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onSelectPatient={(p) => { setSelectedPatient(p); setActiveTab('patients'); }}
+          setActiveTab={(tab) => handleNavigate(tab, null)}
+          onSelectPatient={(p) => handleNavigate('patients', p)}
         />
 
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto">
           {selectedPatient && activeTab === 'patients' ? (
             <PatientProfile
               patient={patients.find(p => p.id === selectedPatient?.id) || selectedPatient}
-              onBack={() => setSelectedPatient(null)}
+              onBack={handleBack}
               onBookAppointment={handleBookForPatient}
               onStartConsultation={handleStartConsultation}
               onCreateInvoice={() => setShowGlobalBilling(true)}
@@ -106,15 +142,14 @@ const AppContent = () => {
             <>
               {activeTab === 'dashboard' && (
                 <Dashboard
-                  setActiveTab={setActiveTab}
-                  onOpenAddPatient={() => setActiveTab('patients')}
+                  setActiveTab={(tab) => handleNavigate(tab, null)}
+                  onOpenAddPatient={() => handleNavigate('patients', null)}
                   onOpenNewApt={() => setShowGlobalBooking(true)}
-                  onOpenConsultation={() => setActiveTab('consultation')}
+                  onOpenConsultation={() => handleNavigate('consultation', null)}
                   onOpenBilling={() => setShowGlobalBilling(true)}
                   onStartConsultation={(apt) => {
                     const p = patients.find(pat => pat.id === apt.patientId);
-                    if (p) setSelectedPatient(p);
-                    setActiveTab('consultation');
+                    handleNavigate('consultation', p || null);
                   }}
                 />
               )}
@@ -134,8 +169,7 @@ const AppContent = () => {
                 <Appointments
                   onStartConsultation={(apt) => {
                     const p = patients.find(pat => pat.id === apt.patientId);
-                    if (p) setSelectedPatient(p);
-                    setActiveTab('consultation');
+                    handleNavigate('consultation', p || null);
                   }}
                 />
               )}
@@ -143,7 +177,7 @@ const AppContent = () => {
               {activeTab === 'consultation' && (
                 <Consultation
                   selectedPatient={selectedPatient}
-                  onFinishedConsultation={() => setActiveTab('appointments')}
+                  onFinishedConsultation={() => handleNavigate('appointments', null)}
                 />
               )}
 
