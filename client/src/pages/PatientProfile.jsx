@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Phone, 
   Mail, 
@@ -8,23 +8,75 @@ import {
   Calendar, 
   Stethoscope, 
   ArrowLeft,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Camera
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Modal } from '../components/common/Modal';
 
 export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartConsultation, onCreateInvoice }) => {
-  const { consultations, invoices, dentalCharts, addPatientDocument } = useData();
+  const { consultations, invoices, dentalCharts, addPatientDocument, updatePatient, showToast } = useData();
   const [activeTab, setActiveTab] = useState('medical');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState('X-Ray');
   const [docUrl, setDocUrl] = useState('');
+  const patientPhotoInputRef = useRef(null);
 
   if (!patient) return null;
 
   const patientConsultations = consultations.filter(c => c.patientId === patient.id);
   const patientInvoices = invoices.filter(i => i.patientId === patient.id);
+
+  const handlePatientPhotoUpload = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        try {
+          const webpDataUrl = canvas.toDataURL('image/webp', 0.85);
+          updatePatient(patient.id, { avatar: webpDataUrl });
+        } catch (err) {
+          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          updatePatient(patient.id, { avatar: jpegDataUrl });
+        }
+        if (showToast) showToast(`Updated photo for ${patient.name}`);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const handleUploadSubmit = (e) => {
     e.preventDefault();
@@ -67,9 +119,49 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
 
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-soft">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* Hidden File Input for Patient Photo */}
+          <input
+            type="file"
+            ref={patientPhotoInputRef}
+            accept="image/*"
+            onChange={handlePatientPhotoUpload}
+            className="hidden"
+            id="patient-photo-input"
+          />
+
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-tealbrand-500 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0">
-              {patient.name.split(' ').map(n => n[0]).join('')}
+            <div 
+              className="relative group cursor-pointer shrink-0" 
+              onClick={() => patientPhotoInputRef.current?.click()}
+              title="Click to update patient photo"
+            >
+              {patient.avatar ? (
+                <img
+                  src={patient.avatar}
+                  alt={patient.name}
+                  className="w-16 h-16 rounded-2xl object-cover shadow-md ring-2 ring-brand-500/30 group-hover:brightness-90 transition-all"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-tealbrand-500 text-white font-black text-2xl flex items-center justify-center shadow-md group-hover:opacity-90 transition-all">
+                  {patient.name.split(' ').map(n => n[0]).join('')}
+                </div>
+              )}
+              
+              <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="w-5 h-5" />
+              </div>
+
+              <button 
+                type="button" 
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-slate-900/90 hover:bg-brand-600 text-white border border-white flex items-center justify-center shadow transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  patientPhotoInputRef.current?.click();
+                }}
+                title="Change Photo"
+              >
+                <Camera className="w-3 h-3" />
+              </button>
             </div>
             <div>
               <div className="flex items-center gap-3">

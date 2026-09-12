@@ -8,7 +8,8 @@ import {
   Clock, 
   Sparkles,
   Settings as SettingsIcon,
-  ChevronDown
+  ChevronDown,
+  Camera
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -138,6 +139,9 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
             <img
               src={currentUser?.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'}
               alt={currentUser?.name}
+              onError={(e) => {
+                e.currentTarget.src = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80';
+              }}
               className="w-8 h-8 rounded-xl object-cover ring-2 ring-brand-500/30 shadow-sm"
             />
             <div className="text-left hidden sm:block">
@@ -166,6 +170,15 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
                 className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 font-bold transition-colors"
               >
                 <User className="w-4 h-4 text-brand-600" /> {isDoctor ? 'Doctor Profile' : 'My Profile'}
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('doctor-profile');
+                  setShowProfileMenu(false);
+                }}
+                className="w-full text-left px-4 py-2.5 text-xs text-tealbrand-700 hover:bg-tealbrand-50 flex items-center gap-2.5 font-bold transition-colors"
+              >
+                <Camera className="w-4 h-4 text-tealbrand-600" /> Change Profile Photo
               </button>
               <button
                 onClick={() => {

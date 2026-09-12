@@ -96,9 +96,13 @@ export const StaffManagement = () => {
           <div key={u.id} className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-soft space-y-4">
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-900 to-brand-950 text-white font-extrabold flex items-center justify-center text-sm shadow">
-                  {u.name.split(' ').map(n => n[0]).join('')}
-                </div>
+                {u.avatar ? (
+                  <img src={u.avatar} alt={u.name} className="w-12 h-12 rounded-2xl object-cover shadow ring-1 ring-brand-500/20 shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-900 to-brand-950 text-white font-extrabold flex items-center justify-center text-sm shadow shrink-0">
+                    {u.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                )}
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                     {u.name}

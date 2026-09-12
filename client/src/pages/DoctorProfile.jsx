@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, 
   ShieldCheck, 
@@ -18,18 +18,32 @@ import {
   Activity, 
   Sparkles,
   Camera,
-  Layers
+  Layers,
+  Upload,
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 
+const PRESET_AVATARS = [
+  'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1594824813575-d1421711bf7d?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=150&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&auto=format&fit=crop&q=80'
+];
+
 export const DoctorProfile = () => {
   const { currentUser, updateCurrentUser, isDoctor } = useAuth();
-  const { updateDoctorProfile, consultations, patients, clinicProfile } = useData();
+  const { updateDoctorProfile, consultations, patients, clinicProfile, showToast } = useData();
 
   const doctorData = currentUser || {};
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Form States
   const [name, setName] = useState(doctorData.name || 'Dr. Tharama, MDS');
@@ -66,6 +80,15 @@ export const DoctorProfile = () => {
 
   const specialtiesList = specialtiesText.split(',').map(s => s.trim()).filter(Boolean);
 
+  const applyAvatarUpdate = (newAvatarUrl) => {
+    setAvatar(newAvatarUrl);
+    updateCurrentUser({ avatar: newAvatarUrl });
+    updateDoctorProfile(doctorData.id || 'usr_doc_1', { avatar: newAvatarUrl });
+    if (showToast) {
+      showToast('Profile photo updated successfully!');
+    }
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
 
@@ -99,6 +122,12 @@ export const DoctorProfile = () => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (JPEG, PNG, WEBP)');
+      return;
+    }
+
+    setIsUploading(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -125,17 +154,38 @@ export const DoctorProfile = () => {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert image to optimized WebP format
-        const webpDataUrl = canvas.toDataURL('image/webp', 0.85);
-        setAvatar(webpDataUrl);
+        // Convert image to optimized WebP format with JPEG fallback
+        try {
+          const webpDataUrl = canvas.toDataURL('image/webp', 0.85);
+          applyAvatarUpdate(webpDataUrl);
+        } catch (err) {
+          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          applyAvatarUpdate(jpegDataUrl);
+        }
+        setIsUploading(false);
+      };
+      img.onerror = () => {
+        setIsUploading(false);
+        alert('Failed to process image');
       };
       img.src = event.target.result;
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 animate-fade-in">
+      {/* Hidden File Input for Avatar Upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+        id="profile-avatar-input"
+      />
+
       {/* Header Banner & Profile Card */}
       <div className="relative bg-white rounded-3xl border border-slate-200/80 shadow-soft overflow-hidden">
         {/* Decorative Top Gradient */}
@@ -152,18 +202,53 @@ export const DoctorProfile = () => {
         <div className="px-6 sm:px-8 pb-6 relative">
           {/* Avatar & Action Button Row */}
           <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 -mt-14 sm:-mt-16 mb-4">
-            <div className="relative group">
+            <div 
+              className="relative group cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+              title="Click to change profile picture"
+            >
               <img
                 src={avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'}
                 alt={name}
-                className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-cover ring-4 ring-white shadow-xl bg-white"
+                className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-cover ring-4 ring-white shadow-xl bg-white transition-all duration-300 group-hover:brightness-90 group-hover:scale-[1.02]"
               />
+              
+              {/* Interactive Hover Overlay with Camera Icon */}
+              <div className="absolute inset-0 rounded-3xl bg-black/45 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col items-center justify-center text-white gap-1 p-2">
+                <Camera className="w-6 h-6 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-center">Change Photo</span>
+              </div>
+
+              {/* Camera Action Badge */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                className="absolute -bottom-1 -left-1 w-8 h-8 rounded-xl bg-slate-900/90 hover:bg-brand-600 text-white border-2 border-white shadow-lg flex items-center justify-center transition-colors"
+                title="Upload New Profile Photo"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+
+              {/* Active Verification Status Badge */}
               <div className="absolute bottom-1 right-1 w-6 h-6 bg-emerald-500 rounded-full ring-4 ring-white flex items-center justify-center text-white" title={isDoctor ? "Active Doctor" : "Active Staff"}>
                 <CheckCircle2 className="w-3.5 h-3.5" />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="px-4 py-2.5 rounded-xl text-xs font-extrabold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm transition-all flex items-center gap-2"
+                title="Upload new profile picture"
+              >
+                <Camera className="w-4 h-4 text-brand-600" />
+                <span>{isUploading ? 'Uploading...' : 'Change Photo'}</span>
+              </button>
               <button
                 onClick={() => setIsEditing(!isEditing)}
                 className={`px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 ${
@@ -264,6 +349,81 @@ export const DoctorProfile = () => {
             {/* Profile Avatar & Basic Info */}
             <div className="space-y-4">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">1. Basic Info & Avatar</h4>
+
+              {/* Avatar Uploader & Presets Box */}
+              <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase text-slate-700 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-brand-600" /> Profile Picture / Avatar
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-medium">Supported: JPG, PNG, WebP (Auto-optimized)</span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div 
+                    className="relative group cursor-pointer shrink-0"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Click to select new image"
+                  >
+                    <img
+                      src={avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'}
+                      alt="Avatar preview"
+                      className="w-20 h-20 rounded-2xl object-cover ring-2 ring-brand-500/40 shadow-md bg-white transition-all group-hover:brightness-90"
+                    />
+                    <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-2.5 w-full">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="px-3.5 py-2 bg-gradient-to-r from-brand-600 to-tealbrand-600 hover:opacity-95 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{isUploading ? 'Compressing & Uploading...' : 'Upload Image from Device'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const defaultAvatar = isDoctor
+                            ? 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'
+                            : 'https://images.unsplash.com/photo-1594824813575-d1421711bf7d?w=150&auto=format&fit=crop&q=80';
+                          applyAvatarUpdate(defaultAvatar);
+                        }}
+                        className="px-3 py-2 bg-slate-200/90 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-slate-500" /> Reset Default
+                      </button>
+                    </div>
+
+                    {/* Preset Avatars Selector */}
+                    <div>
+                      <div className="text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-500" /> Quick select professional avatar:
+                      </div>
+                      <div className="flex items-center gap-2.5 overflow-x-auto py-1">
+                        {PRESET_AVATARS.map((presetUrl, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => applyAvatarUpdate(presetUrl)}
+                            className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${avatar === presetUrl ? 'border-brand-600 ring-2 ring-brand-400/50 scale-105 shadow-sm' : 'border-slate-200 hover:border-slate-400 opacity-80 hover:opacity-100'}`}
+                            title={`Choose Avatar ${idx + 1}`}
+                          >
+                            <img src={presetUrl} alt={`Avatar ${idx + 1}`} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Full Name</label>

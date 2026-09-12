@@ -47,13 +47,25 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       </div>
 
       {/* Logged User Info Card */}
-      <div className="px-4 py-3 mx-3.5 mt-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/90 border border-slate-800 flex items-center justify-between shadow-inner">
+      <div 
+        onClick={() => setActiveTab('doctor-profile')}
+        className="px-3.5 py-3 mx-3.5 mt-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-900/90 hover:from-slate-800 hover:to-slate-900 border border-slate-800 hover:border-slate-700 flex items-center justify-between shadow-inner cursor-pointer transition-all group"
+        title="View & Edit Profile"
+      >
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${isDoctor ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm' : 'bg-tealbrand-500/20 text-tealbrand-300 border border-tealbrand-500/40 shadow-sm'}`}>
-            {isDoctor ? <ShieldCheck className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-          </div>
+          {currentUser?.avatar ? (
+            <img 
+              src={currentUser.avatar} 
+              alt={currentUser.name} 
+              className="w-9 h-9 rounded-xl object-cover ring-2 ring-brand-500/40 shrink-0 shadow-sm group-hover:scale-105 transition-transform" 
+            />
+          ) : (
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${isDoctor ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm' : 'bg-tealbrand-500/20 text-tealbrand-300 border border-tealbrand-500/40 shadow-sm'}`}>
+              {isDoctor ? <ShieldCheck className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+            </div>
+          )}
           <div className="min-w-0">
-            <div className="text-xs font-black text-white truncate leading-tight">{currentUser?.name}</div>
+            <div className="text-xs font-black text-white truncate leading-tight group-hover:text-brand-300 transition-colors">{currentUser?.name}</div>
             <div className="text-[10px] text-slate-400 font-bold mt-0.5 flex items-center gap-1">
               <span className={`w-1.5 h-1.5 rounded-full ${isDoctor ? 'bg-brand-400' : 'bg-tealbrand-400'}`}></span>
               <span>{currentUser?.role || 'Staff'}</span>

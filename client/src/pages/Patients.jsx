@@ -122,9 +122,17 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
                 <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="p-4 pl-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-500 to-tealbrand-500 text-white font-black flex items-center justify-center text-xs shadow-sm shrink-0">
-                        {p.name.split(' ').map(n => n[0]).join('')}
-                      </div>
+                      {p.avatar ? (
+                        <img 
+                          src={p.avatar} 
+                          alt={p.name} 
+                          className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-brand-500/30 shrink-0" 
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-500 to-tealbrand-500 text-white font-black flex items-center justify-center text-xs shadow-sm shrink-0">
+                          {p.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                      )}
                       <div>
                         <div className="font-black text-slate-900 text-sm">{p.name}</div>
                         <div className="text-[11px] text-slate-500 font-medium mt-0.5">{p.id} • {p.gender}, {p.age}y</div>
