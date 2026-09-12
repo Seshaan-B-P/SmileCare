@@ -8,7 +8,7 @@ const dentalChartSchema = new mongoose.Schema({
   notes: String,
   updatedBy: String,
   updatedAt: String
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export const DentalChart = mongoose.models.DentalChart || mongoose.model('DentalChart', dentalChartSchema);
 export default DentalChart;

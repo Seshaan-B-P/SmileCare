@@ -14,7 +14,7 @@ const settingSchema = new mongoose.Schema({
   defaultConsultationFee: Number,
   whatsAppApiStatus: String,
   whatsAppPhoneNumber: String
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export const Setting = mongoose.models.Setting || mongoose.model('Setting', settingSchema);
 export default Setting;

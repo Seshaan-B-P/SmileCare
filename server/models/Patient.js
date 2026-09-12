@@ -10,6 +10,7 @@ const patientSchema = new mongoose.Schema({
   bloodGroup: String,
   emergencyContact: String,
   address: String,
+  avatar: String,
   status: { type: String, default: 'Active' },
   joinedDate: String,
   medicalHistory: [String],
@@ -17,7 +18,7 @@ const patientSchema = new mongoose.Schema({
   allergies: [String],
   notes: String,
   documents: Array
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export const Patient = mongoose.models.Patient || mongoose.model('Patient', patientSchema);
 export default Patient;

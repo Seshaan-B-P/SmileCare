@@ -13,7 +13,7 @@ const consultationSchema = new mongoose.Schema({
   followUpDays: Number,
   followUpDate: String,
   prescription: Object
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export const Consultation = mongoose.models.Consultation || mongoose.model('Consultation', consultationSchema);
 export default Consultation;

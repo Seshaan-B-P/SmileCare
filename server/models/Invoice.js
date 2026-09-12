@@ -15,7 +15,7 @@ const invoiceSchema = new mongoose.Schema({
   paymentStatus: String,
   paymentMethod: String,
   receiptNo: String
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export const Invoice = mongoose.models.Invoice || mongoose.model('Invoice', invoiceSchema);
 export default Invoice;

@@ -2,6 +2,8 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import { Patient } from './models/Patient.js';
 import { Appointment } from './models/Appointment.js';
@@ -9,11 +11,18 @@ import { Consultation } from './models/Consultation.js';
 import { Invoice } from './models/Invoice.js';
 import { User } from './models/User.js';
 import { Setting } from './models/Setting.js';
-
-connectDB();
+import { DentalChart } from './models/DentalChart.js';
+import { FollowUp } from './models/FollowUp.js';
+import { ActivityLog } from './models/ActivityLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config();
+
+connectDB();
 
 const PORT = process.env.PORT || 5000;
 
@@ -139,7 +148,18 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (pathname === '/api/health' && req.method === 'GET') {
-      return sendJSON(res, 200, { status: 'OK', system: 'SmileCare Express Backend Server v1.0', time: new Date().toISOString() });
+      const mongoState = mongoose.connection.readyState;
+      const isConnected = mongoState === 1;
+      const isAtlas = (process.env.MONGODB_URI || '').includes('mongodb.net');
+      const dbName = mongoose.connection.name || 'smilecare';
+      return sendJSON(res, 200, {
+        status: 'OK',
+        system: 'SmileCare Express Backend Server v1.0',
+        mongoConnected: isConnected,
+        isAtlas,
+        database: dbName,
+        time: new Date().toISOString()
+      });
     }
 
     if (pathname === '/api/sync' && req.method === 'POST') {
@@ -180,11 +200,37 @@ const server = http.createServer(async (req, res) => {
             await Setting.deleteMany({});
             await Setting.create(cleanProfile);
           }
+          if (payload.dentalCharts && typeof payload.dentalCharts === 'object') {
+            const chartEntries = [];
+            Object.entries(payload.dentalCharts).forEach(([patientId, teethObj]) => {
+              if (teethObj && typeof teethObj === 'object') {
+                Object.entries(teethObj).forEach(([toothId, toothData]) => {
+                  chartEntries.push({
+                    patientId,
+                    toothId: Number(toothId),
+                    ...(toothData || {})
+                  });
+                });
+              }
+            });
+            await DentalChart.deleteMany({});
+            if (chartEntries.length > 0) await DentalChart.insertMany(chartEntries, { ordered: false });
+          }
+          if (Array.isArray(payload.followUps)) {
+            const cleanFollowUps = sanitizeDocs(payload.followUps, 'id');
+            await FollowUp.deleteMany({});
+            if (cleanFollowUps.length > 0) await FollowUp.insertMany(cleanFollowUps, { ordered: false });
+          }
+          if (Array.isArray(payload.activityLog)) {
+            const cleanActivity = sanitizeDocs(payload.activityLog, 'id');
+            await ActivityLog.deleteMany({});
+            if (cleanActivity.length > 0) await ActivityLog.insertMany(cleanActivity, { ordered: false });
+          }
         } catch (mongoErr) {
-          console.error('MongoDB sync error:', mongoErr.message);
+          console.error('MongoDB Atlas sync error:', mongoErr.message);
         }
       }
-      return sendJSON(res, 200, { success: true, message: 'Data synced successfully to MongoDB' });
+      return sendJSON(res, 200, { success: true, message: 'All SmileCare records synced successfully to MongoDB Atlas' });
     }
 
     if (pathname === '/api/data' && req.method === 'GET') {
@@ -197,6 +243,25 @@ const server = http.createServer(async (req, res) => {
         const rawProfile = await Setting.findOne({}).lean();
         const mongoProfile = rawProfile ? (() => { const copy = { ...rawProfile }; delete copy._id; delete copy.__v; return copy; })() : null;
 
+        const mongoCharts = await DentalChart.find({}).lean();
+        const reconstructedCharts = {};
+        if (Array.isArray(mongoCharts) && mongoCharts.length > 0) {
+          mongoCharts.forEach(c => {
+            if (!reconstructedCharts[c.patientId]) reconstructedCharts[c.patientId] = {};
+            reconstructedCharts[c.patientId][c.toothId] = {
+              toothId: c.toothId,
+              condition: c.condition,
+              status: c.status,
+              notes: c.notes,
+              updatedBy: c.updatedBy,
+              updatedAt: c.updatedAt
+            };
+          });
+        }
+
+        const mongoFollowUps = sanitizeDocs(await FollowUp.find({}).lean(), 'id');
+        const mongoActivity = sanitizeDocs(await ActivityLog.find({}).lean(), 'id');
+
         if (mongoPatients.length > 0) dbState.patients = mongoPatients;
         if (mongoAppointments.length > 0) dbState.appointments = mongoAppointments;
         if (mongoConsultations.length > 0) dbState.consultations = mongoConsultations;
@@ -207,6 +272,9 @@ const server = http.createServer(async (req, res) => {
           if (docUser) dbState.currentUser = { ...docUser };
         }
         if (mongoProfile) dbState.clinicProfile = mongoProfile;
+        if (Object.keys(reconstructedCharts).length > 0) dbState.dentalCharts = reconstructedCharts;
+        if (mongoFollowUps.length > 0) dbState.followUps = mongoFollowUps;
+        if (mongoActivity.length > 0) dbState.activityLog = mongoActivity;
       } catch (e) {
         console.warn('Fallback to in-memory dbState:', e.message);
       }

@@ -1,10 +1,37 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Save, Download, Upload, MessageSquareText, Shield, RefreshCw, Trash2 } from 'lucide-react';
+import { 
+  Settings as SettingsIcon, 
+  Save, 
+  Download, 
+  Upload, 
+  MessageSquareText, 
+  Shield, 
+  RefreshCw, 
+  Trash2,
+  Cloud,
+  Database,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { downloadJSON } from '../utils/exportUtils';
 
 export const Settings = () => {
-  const { clinicProfile, updateClinicProfile, restoreDatabase, resetToSeed, clearAllData, rawDb } = useData();
+  const { 
+    clinicProfile, 
+    updateClinicProfile, 
+    restoreDatabase, 
+    resetToSeed, 
+    clearAllData, 
+    rawDb, 
+    cloudSyncStatus, 
+    syncToCloud, 
+    showToast,
+    patients,
+    appointments,
+    consultations,
+    invoices
+  } = useData();
 
   const [name, setName] = useState(clinicProfile.name);
   const [tagline, setTagline] = useState(clinicProfile.tagline);
@@ -14,6 +41,18 @@ export const Settings = () => {
   const [registrationNo, setRegistrationNo] = useState(clinicProfile.registrationNo);
   const [defaultConsultationFee, setDefaultConsultationFee] = useState(clinicProfile.defaultConsultationFee);
   const [whatsAppPhoneNumber, setWhatsAppPhoneNumber] = useState(clinicProfile.whatsAppPhoneNumber);
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  const handleManualCloudSync = async () => {
+    setIsSyncingCloud(true);
+    const result = await syncToCloud();
+    setIsSyncingCloud(false);
+    if (result && result.success) {
+      if (showToast) showToast('All clinic data successfully synchronized to MongoDB Atlas Cloud!');
+    } else {
+      alert(`Cloud sync warning: ${result?.error || 'Could not connect to MongoDB server.'}`);
+    }
+  };
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -162,6 +201,66 @@ export const Settings = () => {
           </button>
         </div>
       </form>
+
+      {/* MongoDB Atlas Cloud Database Sync Card */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-soft space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-brand-600" /> MongoDB Atlas Cloud Database & Live Sync
+            </h3>
+            <p className="text-xs text-slate-500">Real-time persistence and multi-device sharing across MongoDB Atlas Cluster</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 rounded-full text-[11px] font-black flex items-center gap-1.5 border ${
+              cloudSyncStatus?.connected 
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                : 'bg-amber-50 text-amber-700 border-amber-200'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${cloudSyncStatus?.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+              {cloudSyncStatus?.connected ? 'Connected to MongoDB Atlas' : 'Local Storage Cache (Auto-Sync)'}
+            </span>
+          </div>
+        </div>
+
+        {/* Database & Cloud Information Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/60 text-xs">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Database Name</span>
+            <span className="font-extrabold text-slate-800 font-mono text-xs">smilecare</span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Active Patients</span>
+            <span className="font-extrabold text-brand-600 text-xs">{patients?.length || 0} Records</span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Consultations & Invoices</span>
+            <span className="font-extrabold text-tealbrand-600 text-xs">{(consultations?.length || 0) + (invoices?.length || 0)} Records</span>
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Last Synced</span>
+            <span className="font-extrabold text-slate-700 text-xs">{cloudSyncStatus?.lastSync || 'Just now'}</span>
+          </div>
+        </div>
+
+        {/* Sync Action Row */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+          <p className="text-[11px] text-slate-500 font-medium">
+            💡 All modifications made in SmileCare automatically sync to MongoDB Atlas in real-time. You can also manually trigger a complete database push.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleManualCloudSync}
+            disabled={isSyncingCloud}
+            className="px-5 py-2.5 bg-gradient-to-r from-brand-600 to-tealbrand-600 hover:opacity-95 text-white text-xs font-black rounded-xl shadow-md flex items-center gap-2 shrink-0 transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
+            <span>{isSyncingCloud ? 'Syncing to Atlas Cloud...' : 'Sync All Data to MongoDB Atlas Now'}</span>
+          </button>
+        </div>
+      </div>
 
       <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-soft space-y-4">
         <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
