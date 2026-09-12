@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { MOCK_SEED_DATA } from '../utils/dentalData';
 import { fetchApi } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 
@@ -22,6 +23,7 @@ function mergeRecords(cloudList, localList, idKey = 'id') {
 }
 
 export const DataProvider = ({ children }) => {
+  const { updateCurrentUser } = useAuth();
   const isCloudLoaded = useRef(false);
 
   const [data, setData] = useState(() => {
@@ -153,6 +155,12 @@ export const DataProvider = ({ children }) => {
             fetchApi('/sync', 'POST', merged).then(() => {
               setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
             }).catch(console.warn);
+          }
+
+          // Sync doctor and user credentials from MongoDB Atlas cloud directly to AuthContext
+          const cloudDoc = res.data.currentUser || (uniqueUsers || []).find(u => u.role === 'Doctor' || u.id === 'usr_doc_1');
+          if (cloudDoc && cloudDoc.avatar && updateCurrentUser) {
+            updateCurrentUser(cloudDoc);
           }
 
           return merged;

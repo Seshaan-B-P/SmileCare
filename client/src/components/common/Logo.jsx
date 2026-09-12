@@ -1,61 +1,79 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-export const Logo = ({ size = 'md', variant = 'light', showSubtitle = true, className = '' }) => {
-  // Size presets for container and tooth icon
+export const Logo = ({ size = 'md', variant = 'light', showSubtitle = true, className = '', iconOnly = false }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+
   const sizeMap = {
-    sm: { container: 'w-8 h-8', icon: 'w-5 h-5', title: 'text-base', sub: 'text-[9px]' },
-    md: { container: 'w-10 h-10', icon: 'w-6 h-6', title: 'text-xl', sub: 'text-[10px]' },
-    lg: { container: 'w-14 h-14', icon: 'w-8 h-8', title: 'text-2xl', sub: 'text-xs' },
-    xl: { container: 'w-16 h-16', icon: 'w-10 h-10', title: 'text-3xl', sub: 'text-sm' }
+    sm: { img: 'w-8 h-8', title: 'text-base', sub: 'text-[9px]' },
+    md: { img: 'w-10 h-10', title: 'text-xl', sub: 'text-[10px]' },
+    lg: { img: 'w-14 h-14', title: 'text-2xl', sub: 'text-xs' },
+    xl: { img: 'w-16 h-16', title: 'text-3xl', sub: 'text-sm' }
   };
 
   const currentSize = sizeMap[size] || sizeMap.md;
 
   return (
     <div className={`flex items-center gap-3 select-none ${className}`}>
-      {/* Sleek Glowing Tooth Icon Badge */}
-      <div className={`relative ${currentSize.container} rounded-2xl bg-gradient-to-tr from-brand-600 via-tealbrand-500 to-cyan-400 p-0.5 shadow-teal-glow flex items-center justify-center shrink-0 group`}>
-        <div className="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center relative overflow-hidden">
-          {/* Subtle Inner Glow */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-brand-500/30 to-tealbrand-400/30 opacity-70 group-hover:opacity-100 transition-opacity"></div>
-
-          {/* Precision Tooth SVG Vector Logo Icon */}
-          <svg
-            className={`${currentSize.icon} relative z-10 text-cyan-300 drop-shadow-[0_0_8px_rgba(45,212,191,0.8)]`}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {/* Tooth Contour Outline */}
-            <path d="M12 2C9 2 7 3.5 6 5.5C4.5 8 4 11 5 14C5.8 16.4 7 19.5 8 22C9.5 22 10.5 19 12 16C13.5 19 14.5 22 16 22C17 19.5 18.2 16.4 19 14C20 11 19.5 8 18 5.5C17 3.5 15 2 12 2Z" fill="url(#tooth-grad)" fillOpacity="0.25" />
-            {/* Smile / Polish Curve Inside Tooth */}
-            <path d="M8.5 9.5C10 11 14 11 15.5 9.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            
+      {/* Official Brand Logo Badge */}
+      <div className={`relative ${currentSize.img} rounded-2xl overflow-hidden shrink-0 shadow-sm flex items-center justify-center bg-white p-1 border border-slate-200/80`}>
+        {!imgFailed ? (
+          <img
+            src="/logo.png"
+            alt="SmileCare Logo"
+            onError={() => setImgFailed(true)}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          /* SVG Vector Representation of Tooth + Smile + Cross */
+          <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
             <defs>
-              <linearGradient id="tooth-grad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#38BDF8" />
-                <stop offset="0.5" stopColor="#2DD4BF" />
-                <stop offset="1" stopColor="#0EA5E9" />
+              <linearGradient id="logoToothGrad" x1="15" y1="15" x2="85" y2="85" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#0062D2" />
+                <stop offset="60%" stopColor="#0284C7" />
+                <stop offset="100%" stopColor="#00B4B6" />
               </linearGradient>
             </defs>
+            {/* Stylized Tooth Contour */}
+            <path
+              d="M32 18 C22 18 16 28 16 40 C16 54 24 72 32 88 C38 88 44 78 50 68 C56 78 62 88 68 88 C76 72 84 54 84 40 C84 28 78 18 68 18 C60 18 54 24 50 24 C46 24 40 18 32 18 Z"
+              stroke="url(#logoToothGrad)"
+              strokeWidth="7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="#ffffff"
+            />
+            {/* Smile Arc with Cheek Curve */}
+            <path
+              d="M33 46 Q50 62 67 46"
+              stroke="#0062D2"
+              strokeWidth="6"
+              strokeLinecap="round"
+            />
+            {/* Medical Plus / Cross Sign */}
+            <path
+              d="M72 16 H82 M77 11 V21"
+              stroke="#00B4B6"
+              strokeWidth="5"
+              strokeLinecap="round"
+            />
           </svg>
-        </div>
-      </div>
-
-      {/* Brand Text Header */}
-      <div>
-        <h1 className={`${currentSize.title} font-black tracking-tight leading-none flex items-center ${variant === 'dark' ? 'text-slate-900' : 'text-white'}`}>
-          Smile<span className="text-transparent bg-clip-text bg-gradient-to-r from-tealbrand-400 via-cyan-400 to-tealbrand-300">Care</span>
-        </h1>
-        {showSubtitle && (
-          <p className={`${currentSize.sub} uppercase font-extrabold tracking-wider ${variant === 'dark' ? 'text-slate-500' : 'text-slate-400'} mt-0.5`}>
-            Dental Clinic System
-          </p>
         )}
       </div>
+
+      {/* Brand Text Header & Tagline */}
+      {!iconOnly && (
+        <div className="leading-tight">
+          <h1 className={`${currentSize.title} font-black tracking-tight leading-none flex items-center`}>
+            <span className="text-[#0062D2]">Smile</span>
+            <span className="text-[#00B4B6]">Care</span>
+          </h1>
+          {showSubtitle && (
+            <p className={`${currentSize.sub} font-bold tracking-tight ${variant === 'dark' ? 'text-slate-500' : 'text-slate-300'} mt-0.5 whitespace-nowrap`}>
+              Better Smiles <span className="text-[#00B4B6] mx-0.5">•</span> Healthier Lives
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

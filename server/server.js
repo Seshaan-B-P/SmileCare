@@ -24,6 +24,20 @@ dotenv.config();
 
 connectDB();
 
+// Auto-copy Brand Logo to client/public directory
+try {
+  const logoArtifact = 'C:\\Users\\sesha\\.gemini\\antigravity-ide\\brain\\6070a4b6-4bad-4e4b-afee-32e900dde1ad\\.user_uploaded\\media_1789209414766.jpg';
+  const publicDir = path.join(__dirname, '../client/public');
+  if (fs.existsSync(logoArtifact)) {
+    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+    fs.copyFileSync(logoArtifact, path.join(publicDir, 'logo.png'));
+    fs.copyFileSync(logoArtifact, path.join(publicDir, 'logo.jpg'));
+    console.log('✅ SmileCare brand logo installed to client/public/logo.png');
+  }
+} catch (e) {
+  console.warn('Logo installation notice:', e.message);
+}
+
 const PORT = process.env.PORT || 5000;
 
 const DEFAULT_SEED_DATA = {
@@ -154,6 +168,23 @@ const server = http.createServer(async (req, res) => {
         message: 'SmileCare API Server is live and healthy.',
         endpoints: ['/api/health', '/api/data', '/api/sync']
       });
+    if (pathname === '/api/logo' || pathname === '/logo.png') {
+      const candidates = [
+        path.join(__dirname, '../client/public/logo.png'),
+        'C:\\Users\\sesha\\.gemini\\antigravity-ide\\brain\\6070a4b6-4bad-4e4b-afee-32e900dde1ad\\.user_uploaded\\media_1789209414766.jpg'
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          const imgBuf = fs.readFileSync(p);
+          res.writeHead(200, {
+            'Content-Type': 'image/jpeg',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=86400'
+          });
+          return res.end(imgBuf);
+        }
+      }
+      return sendJSON(res, 404, { error: 'Logo not found' });
     }
 
     if (pathname === '/api/health' && req.method === 'GET') {

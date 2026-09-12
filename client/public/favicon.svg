@@ -1,6 +1,32 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230ea5e9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>
-  <path d='M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z'/>
-  <path d='M8 14s1.5 2 4 2 4-2 4-2'/>
-  <line x1='9' y1='9' x2='9.01' y2='9'/>
-  <line x1='15' y1='9' x2='15.01' y2='9'/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="favGrad" x1="15" y1="15" x2="85" y2="85" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0062D2" />
+      <stop offset="60%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#00B4B6" />
+    </linearGradient>
+  </defs>
+  <!-- Tooth Shape -->
+  <path
+    d="M32 18 C22 18 16 28 16 40 C16 54 24 72 32 88 C38 88 44 78 50 68 C56 78 62 88 68 88 C76 72 84 54 84 40 C84 28 78 18 68 18 C60 18 54 24 50 24 C46 24 40 18 32 18 Z"
+    stroke="url(#favGrad)"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="#ffffff"
+  />
+  <!-- Smile Inside -->
+  <path
+    d="M33 46 Q50 62 67 46"
+    stroke="#0062D2"
+    stroke-width="7"
+    stroke-linecap="round"
+  />
+  <!-- Medical Plus Sign -->
+  <path
+    d="M72 16 H84 M78 10 V22"
+    stroke="#00B4B6"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
 </svg>

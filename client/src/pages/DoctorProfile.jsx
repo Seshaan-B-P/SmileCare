@@ -122,8 +122,9 @@ export const DoctorProfile = () => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (JPEG, PNG, WEBP)');
+    const isImage = (file.type && file.type.startsWith('image/')) || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(file.name || '');
+    if (!isImage) {
+      alert('Please select a valid image file (JPEG, PNG, WEBP)');
       return;
     }
 
@@ -208,8 +209,11 @@ export const DoctorProfile = () => {
               title="Click to change profile picture"
             >
               <img
-                src={avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'}
+                src={avatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'}
                 alt={name}
+                onError={(e) => {
+                  e.currentTarget.src = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80';
+                }}
                 className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl object-cover ring-4 ring-white shadow-xl bg-white transition-all duration-300 group-hover:brightness-90 group-hover:scale-[1.02]"
               />
 
@@ -365,8 +369,11 @@ export const DoctorProfile = () => {
                     title="Click to select new image"
                   >
                     <img
-                      src={avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'}
+                      src={avatar || currentUser?.avatar || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'}
                       alt="Avatar preview"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80';
+                      }}
                       className="w-20 h-20 rounded-2xl object-cover ring-2 ring-brand-500/40 shadow-md bg-white transition-all group-hover:brightness-90"
                     />
                     <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">

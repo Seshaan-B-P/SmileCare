@@ -34,9 +34,12 @@ export const AuthProvider = ({ children }) => {
     const db = savedDb ? JSON.parse(savedDb) : null;
     const usersList = db?.users || MOCK_SEED_DATA.users || [];
 
-    // 1. Check for Doctor credentials (doctor@smilecare.com)
     if (cleanEmail === 'doctor@smilecare.com' || cleanEmail.includes('doctor')) {
       const docUserInDb = usersList.find(u => u.email.toLowerCase() === cleanEmail || u.role === 'Doctor');
+      const savedUser = localStorage.getItem('smilecare_user');
+      const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+      const existingAvatar = docUserInDb?.avatar || parsedUser?.avatar || db?.currentUser?.avatar;
+
       const docUser = {
         id: 'usr_doc_1',
         name: 'Dr. Tharma P, MDS',
@@ -46,6 +49,7 @@ export const AuthProvider = ({ children }) => {
         phone: '+91 98401 23456',
         permissions: { patients: true, consultations: true, billing: true, reports: true, settings: true, staff: true },
         ...(docUserInDb || {}),
+        ...(existingAvatar ? { avatar: existingAvatar } : {}),
         role: 'Doctor' // ALWAYS force role to 'Doctor'
       };
 
