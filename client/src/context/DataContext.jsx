@@ -206,10 +206,19 @@ export const DataProvider = ({ children }) => {
   };
 
   const updatePatient = (id, updatedFields) => {
-    setData(prev => ({
-      ...prev,
-      patients: prev.patients.map(p => p.id === id ? { ...p, ...updatedFields } : p)
-    }));
+    setData(prev => {
+      const nextPatients = prev.patients.map(p => p.id === id ? { ...p, ...updatedFields } : p);
+      const nextData = {
+        ...prev,
+        patients: nextPatients
+      };
+      fetchApi('/sync', 'POST', nextData).then(res => {
+        if (res && res.success) {
+          setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
+        }
+      }).catch(console.warn);
+      return nextData;
+    });
     showToast('Patient record updated');
   };
 
@@ -477,7 +486,7 @@ export const DataProvider = ({ children }) => {
       const updatedDoc = { ...(prev.currentUser || {}), ...updatedFields };
       localStorage.setItem('smilecare_user', JSON.stringify(updatedDoc));
 
-      return {
+      const nextData = {
         ...prev,
         users: updatedUsers,
         clinicProfile: updatedProfile,
@@ -487,6 +496,14 @@ export const DataProvider = ({ children }) => {
           ...prev.activityLog
         ]
       };
+
+      fetchApi('/sync', 'POST', nextData).then(res => {
+        if (res && res.success) {
+          setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
+        }
+      }).catch(console.warn);
+
+      return nextData;
     });
     showToast('Doctor profile updated successfully!');
   };

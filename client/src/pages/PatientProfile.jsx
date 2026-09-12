@@ -41,7 +41,14 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
   const [docName, setDocName] = useState('');
   const [docType, setDocType] = useState('X-Ray');
   const [docUrl, setDocUrl] = useState('');
+  const [currentAvatar, setCurrentAvatar] = useState(patient?.avatar || '');
   const patientPhotoInputRef = useRef(null);
+
+  useEffect(() => {
+    if (patient?.avatar) {
+      setCurrentAvatar(patient.avatar);
+    }
+  }, [patient?.avatar]);
 
   if (!patient) return null;
 
@@ -105,9 +112,11 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
 
         try {
           const webpDataUrl = canvas.toDataURL('image/webp', 0.85);
+          setCurrentAvatar(webpDataUrl);
           updatePatient(patient.id, { avatar: webpDataUrl });
         } catch (err) {
           const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setCurrentAvatar(jpegDataUrl);
           updatePatient(patient.id, { avatar: jpegDataUrl });
         }
         if (showToast) showToast(`Updated photo for ${patient.name}`);
@@ -175,10 +184,11 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
               onClick={() => patientPhotoInputRef.current?.click()}
               title="Click to update patient photo"
             >
-              {patient.avatar ? (
+              {(currentAvatar || patient.avatar) ? (
                 <img
-                  src={patient.avatar}
+                  src={currentAvatar || patient.avatar}
                   alt={patient.name}
+                  onError={() => setCurrentAvatar('')}
                   className="w-16 h-16 rounded-2xl object-cover shadow-md ring-2 ring-brand-500/30 group-hover:brightness-90 transition-all"
                 />
               ) : (

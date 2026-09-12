@@ -96,7 +96,7 @@ const AppContent = () => {
         <main className="flex-1 p-6 overflow-y-auto max-w-7xl w-full mx-auto">
           {selectedPatient && activeTab === 'patients' ? (
             <PatientProfile
-              patient={selectedPatient}
+              patient={patients.find(p => p.id === selectedPatient?.id) || selectedPatient}
               onBack={() => setSelectedPatient(null)}
               onBookAppointment={handleBookForPatient}
               onStartConsultation={handleStartConsultation}

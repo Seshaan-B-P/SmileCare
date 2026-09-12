@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, UserPlus, Eye, Calendar } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Search, UserPlus, Eye, Calendar, Camera, Upload, X } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Modal } from '../components/common/Modal';
 
@@ -61,6 +61,46 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
   const [emergencyContact, setEmergencyContact] = useState('');
   const [address, setAddress] = useState('');
   const [medicalAlerts, setMedicalAlerts] = useState('');
+  const [regAvatar, setRegAvatar] = useState('');
+  const regPhotoRef = useRef(null);
+
+  const handlePhotoFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 400;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        try {
+          setRegAvatar(canvas.toDataURL('image/webp', 0.85));
+        } catch (err) {
+          setRegAvatar(canvas.toDataURL('image/jpeg', 0.85));
+        }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const filteredPatients = patients.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase()) || p.phone.includes(search);
@@ -81,6 +121,7 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
       bloodGroup,
       emergencyContact,
       address,
+      avatar: regAvatar || '',
       medicalHistory: alertsArr,
       dentalHistory: [],
       allergies: alertsArr.filter(a => a.toLowerCase().includes('allerg')),
@@ -92,6 +133,7 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
     setPhone('');
     setEmail('');
     setMedicalAlerts('');
+    setRegAvatar('');
     setShowAddModal(false);
   };
 
@@ -246,6 +288,54 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
           maxWidth="max-w-2xl"
         >
           <form onSubmit={handleAddSubmit} className="space-y-4">
+            {/* Patient Photo Upload Field */}
+            <div className="flex items-center gap-4 p-3 bg-slate-50/80 rounded-2xl border border-slate-200/80">
+              <input
+                type="file"
+                ref={regPhotoRef}
+                accept="image/*"
+                onChange={handlePhotoFileChange}
+                className="hidden"
+              />
+              <div 
+                onClick={() => regPhotoRef.current?.click()}
+                className="w-14 h-14 rounded-2xl bg-white border-2 border-dashed border-slate-300 hover:border-brand-500 cursor-pointer flex items-center justify-center relative group overflow-hidden shrink-0 shadow-xs"
+                title="Upload patient photo"
+              >
+                {regAvatar ? (
+                  <>
+                    <img src={regAvatar} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setRegAvatar(''); }}
+                      className="absolute top-1 right-1 p-0.5 bg-rose-600 text-white rounded-full shadow-xs"
+                      title="Remove photo"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-400 group-hover:text-brand-600 transition-colors">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                )}
+              </div>
+              <div className="text-xs">
+                <div className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                  <span>Patient Profile Photo</span>
+                  <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5">Upload picture for medical charts & patient records</p>
+                <button
+                  type="button"
+                  onClick={() => regPhotoRef.current?.click()}
+                  className="mt-1 text-[11px] font-black text-brand-600 hover:text-brand-700 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Upload className="w-3 h-3" /> Choose Photo
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Full Name</label>
