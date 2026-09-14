@@ -37,7 +37,7 @@ const PRESET_AVATARS = [
 
 export const DoctorProfile = () => {
   const { currentUser, updateCurrentUser, isDoctor } = useAuth();
-  const { updateDoctorProfile, consultations, patients, clinicProfile, showToast } = useData();
+  const { updateDoctorProfile, updateStaffProfile, consultations, patients, clinicProfile, showToast } = useData();
 
   const doctorData = currentUser || {};
 
@@ -83,7 +83,11 @@ export const DoctorProfile = () => {
   const applyAvatarUpdate = (newAvatarUrl) => {
     setAvatar(newAvatarUrl);
     updateCurrentUser({ avatar: newAvatarUrl });
-    updateDoctorProfile(doctorData.id || 'usr_doc_1', { avatar: newAvatarUrl });
+    if (isDoctor) {
+      updateDoctorProfile(doctorData.id || 'usr_doc_1', { avatar: newAvatarUrl });
+    } else if (updateStaffProfile) {
+      updateStaffProfile(doctorData.id, { avatar: newAvatarUrl });
+    }
     if (showToast) {
       showToast('Profile photo updated successfully!');
     }
@@ -92,7 +96,7 @@ export const DoctorProfile = () => {
   const handleSave = (e) => {
     e.preventDefault();
 
-    const updatedDoctor = {
+    const updatedProfile = {
       name,
       title,
       qualification,
@@ -109,8 +113,12 @@ export const DoctorProfile = () => {
     };
 
     // Update in AuthContext & DataContext
-    updateCurrentUser(updatedDoctor);
-    updateDoctorProfile(doctorData.id || 'usr_doc_1', updatedDoctor);
+    updateCurrentUser(updatedProfile);
+    if (isDoctor) {
+      updateDoctorProfile(doctorData.id || 'usr_doc_1', updatedProfile);
+    } else if (updateStaffProfile) {
+      updateStaffProfile(doctorData.id, updatedProfile);
+    }
 
     setIsEditing(false);
   };

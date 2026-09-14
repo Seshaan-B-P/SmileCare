@@ -22,6 +22,17 @@ export const MOCK_SEED_DATA = {
       regNo: 'TNDC-REG-48291',
       phone: '+91 98401 23456',
       permissions: { patients: true, consultations: true, billing: true, reports: true, settings: true, staff: true }
+    },
+    {
+      id: 'usr_staff_1',
+      name: 'Priya Dharshini',
+      email: 'staff@smilecare.com',
+      password: 'Staff@123',
+      role: 'Staff',
+      title: 'Senior Dental Assistant & Clinic Coordinator',
+      regNo: 'STF-TN-4019',
+      phone: '+91 98402 34567',
+      permissions: { patients: true, appointments: true, consultation: false, consultations: false, billing: true, whatsapp: true, reports: false, settings: false, staff: false }
     }
   ],
   clinicProfile: {

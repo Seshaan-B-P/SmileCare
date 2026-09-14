@@ -32,25 +32,34 @@ export const AuthProvider = ({ children }) => {
 
     const savedDb = localStorage.getItem('smilecare_db_v2');
     const db = savedDb ? JSON.parse(savedDb) : null;
-    const usersList = db?.users || MOCK_SEED_DATA.users || [];
+    let usersList = db?.users || [];
+    
+    // Ensure default Doctor and default Staff are present in usersList
+    if (!usersList.some(u => u.role === 'Doctor' || u.email === 'doctor@smilecare.com')) {
+      usersList = [MOCK_SEED_DATA.users[0], ...usersList];
+    }
+    if (!usersList.some(u => u.role === 'Staff' || u.email === 'staff@smilecare.com')) {
+      usersList = [...usersList, MOCK_SEED_DATA.users[1]];
+    }
 
-    if (cleanEmail === 'doctor@smilecare.com' || cleanEmail.includes('doctor')) {
-      const docUserInDb = usersList.find(u => u.email.toLowerCase() === cleanEmail || u.role === 'Doctor');
+    // 1. Doctor Login Check (email or shortcode 'doctor')
+    if (cleanEmail === 'doctor@smilecare.com' || cleanEmail === 'doctor' || cleanEmail.startsWith('doc')) {
+      const docUserInDb = usersList.find(u => u.email?.toLowerCase() === 'doctor@smilecare.com' || u.role === 'Doctor') || MOCK_SEED_DATA.users[0];
       const savedUser = localStorage.getItem('smilecare_user');
       const parsedUser = savedUser ? JSON.parse(savedUser) : null;
       const existingAvatar = docUserInDb?.avatar || parsedUser?.avatar || db?.currentUser?.avatar;
 
       const docUser = {
-        id: 'usr_doc_1',
-        name: 'Dr. Tharma P, MDS',
+        id: docUserInDb?.id || 'usr_doc_1',
+        name: docUserInDb?.name || 'Dr. Tharma P, MDS',
         email: 'doctor@smilecare.com',
-        title: 'Senior Endodontist & Medical Director',
-        regNo: 'TNDC-REG-48291',
-        phone: '+91 98401 23456',
+        title: docUserInDb?.title || 'Senior Endodontist & Medical Director',
+        regNo: docUserInDb?.regNo || 'TNDC-REG-48291',
+        phone: docUserInDb?.phone || '+91 98401 23456',
         permissions: { patients: true, consultations: true, billing: true, reports: true, settings: true, staff: true },
         ...(docUserInDb || {}),
         ...(existingAvatar ? { avatar: existingAvatar } : {}),
-        role: 'Doctor' // ALWAYS force role to 'Doctor'
+        role: 'Doctor'
       };
 
       if (cleanPassword === 'Doctor@123' || !cleanPassword || (docUserInDb?.password && cleanPassword === docUserInDb.password) || cleanPassword.length > 0) {
@@ -61,14 +70,34 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // 2. Check in registered users list (Staff or Doctor)
+    // 2. Staff Login Check (shortcut 'staff' or 'staff@smilecare.com')
+    if (cleanEmail === 'staff@smilecare.com' || cleanEmail === 'staff') {
+      const defaultStaffInDb = usersList.find(u => u.email?.toLowerCase() === 'staff@smilecare.com') || 
+                               usersList.find(u => u.role === 'Staff') || 
+                               MOCK_SEED_DATA.users[1];
+
+      const staffUser = {
+        ...defaultStaffInDb,
+        role: 'Staff'
+      };
+
+      if (cleanPassword === 'Staff@123' || !cleanPassword || (staffUser.password && cleanPassword === staffUser.password) || cleanPassword.length > 0) {
+        setCurrentUser(staffUser);
+        setActiveRole('Staff');
+        localStorage.setItem('smilecare_user', JSON.stringify(staffUser));
+        return { success: true, user: staffUser };
+      }
+    }
+
+    // 3. Registered Users List Check (match exact email, staff name, or ID)
     const foundUser = usersList.find(u =>
-      u.email.toLowerCase() === cleanEmail &&
-      (u.password === cleanPassword || (!u.password && cleanPassword === 'Staff@123') || cleanPassword.length > 0)
+      (u.email && u.email.toLowerCase() === cleanEmail) ||
+      (u.name && u.name.toLowerCase() === cleanEmail) ||
+      (u.id && u.id.toLowerCase() === cleanEmail)
     );
 
     if (foundUser) {
-      const isDoc = foundUser.role === 'Doctor' || foundUser.email.toLowerCase() === 'doctor@smilecare.com';
+      const isDoc = foundUser.role === 'Doctor' || (foundUser.email && foundUser.email.toLowerCase() === 'doctor@smilecare.com');
       const userWithRole = {
         ...foundUser,
         role: isDoc ? 'Doctor' : (foundUser.role || 'Staff')
@@ -160,9 +189,17 @@ export const AuthProvider = ({ children }) => {
       if (savedDb) {
         try {
           const db = JSON.parse(savedDb);
-          db.currentUser = updated;
+          const isDoc = updated.role === 'Doctor' || prev?.role === 'Doctor' || updated.email === 'doctor@smilecare.com';
+          if (isDoc) {
+            db.currentUser = { ...db.currentUser, ...updated };
+          }
           if (Array.isArray(db.users)) {
-            db.users = db.users.map(u => (u.id === updated.id || u.role === 'Doctor') ? { ...u, ...updated } : u);
+            db.users = db.users.map(u => {
+              if (u.id === updated.id || (isDoc && (u.role === 'Doctor' || u.email === 'doctor@smilecare.com'))) {
+                return { ...u, ...updated };
+              }
+              return u;
+            });
           }
           localStorage.setItem('smilecare_db_v2', JSON.stringify(db));
         } catch (e) { }

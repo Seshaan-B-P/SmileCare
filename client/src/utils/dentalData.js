@@ -144,7 +144,36 @@ export const MOCK_SEED_DATA = {
       title: 'Senior Endodontist (MDS)',
       regNo: 'TNDC-REG-48291',
       phone: '+91 98401 23456',
+      avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
       permissions: { patients: true, consultations: true, billing: true, reports: true, settings: true, staff: true }
+    },
+    {
+      id: 'usr_staff_1',
+      name: 'Priya Dharshini',
+      email: 'staff@smilecare.com',
+      password: 'Staff@123',
+      role: 'Staff',
+      title: 'Senior Dental Assistant & Clinic Coordinator',
+      qualification: 'Diploma in Dental Hygiene (TNDU)',
+      regNo: 'STF-TN-4019',
+      phone: '+91 98402 34567',
+      workShift: 'Morning (9:00 AM - 3:00 PM)',
+      salary: 28000,
+      joiningDate: '2024-01-15',
+      emergencyContact: '+91 98402 99999',
+      idProofNo: 'STF-ID-1002',
+      avatar: 'https://images.unsplash.com/photo-1594824813575-d1421711bf7d?w=150&auto=format&fit=crop&q=80',
+      permissions: {
+        patients: true,
+        appointments: true,
+        consultation: false,
+        consultations: false,
+        billing: true,
+        whatsapp: true,
+        reports: false,
+        settings: false,
+        staff: false
+      }
     }
   ],
   clinicProfile: {

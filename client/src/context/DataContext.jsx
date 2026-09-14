@@ -33,8 +33,12 @@ export const DataProvider = ({ children }) => {
         const parsed = JSON.parse(saved);
         const cleanUsers = (parsed.users || []).filter(u => u.name !== 'Mark Davis');
         const doctorExists = cleanUsers.some(u => u.role === 'Doctor' || u.email === 'doctor@smilecare.com');
-        if (!doctorExists) {
+        if (!doctorExists && MOCK_SEED_DATA.users[0]) {
           cleanUsers.unshift(MOCK_SEED_DATA.users[0]);
+        }
+        const staffExists = cleanUsers.some(u => u.role === 'Staff');
+        if (!staffExists && MOCK_SEED_DATA.users[1]) {
+          cleanUsers.push(MOCK_SEED_DATA.users[1]);
         }
         return {
           ...parsed,
@@ -601,6 +605,42 @@ export const DataProvider = ({ children }) => {
     showToast('Doctor profile updated successfully!');
   };
 
+  const updateStaffProfile = (staffId, updatedFields) => {
+    setData(prev => {
+      const updatedUsers = (prev.users || []).map(u => {
+        if (u.id === staffId || (updatedFields.email && u.email?.toLowerCase() === updatedFields.email?.toLowerCase())) {
+          return { ...u, ...updatedFields };
+        }
+        return u;
+      });
+
+      const updatedStaff = { ...(prev.users?.find(u => u.id === staffId) || {}), ...updatedFields };
+      localStorage.setItem('smilecare_user', JSON.stringify(updatedStaff));
+
+      const nextData = {
+        ...prev,
+        users: updatedUsers,
+        activityLog: [
+          { id: `act_${Date.now()}`, time: 'Just now', user: updatedStaff.name || 'Staff', action: `Updated staff profile details` },
+          ...prev.activityLog
+        ]
+      };
+
+      try {
+        localStorage.setItem('smilecare_db_v2', JSON.stringify(nextData));
+      } catch (e) {}
+
+      fetchApi('/sync', 'POST', nextData).then(res => {
+        if (res && res.success) {
+          setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
+        }
+      }).catch(console.warn);
+
+      return nextData;
+    });
+    showToast('Staff profile updated successfully!');
+  };
+
   const restoreDatabase = (backupData) => {
     setData(backupData);
     showToast('Database restored successfully');
@@ -657,6 +697,7 @@ export const DataProvider = ({ children }) => {
       updateStaffPermissions,
       updateClinicProfile,
       updateDoctorProfile,
+      updateStaffProfile,
       restoreDatabase,
       resetToSeed,
       clearAllData,

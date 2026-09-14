@@ -12,9 +12,12 @@ import {
   CheckCircle2,
   Zap,
   Activity,
-  Shield
+  Shield,
+  Stethoscope,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { MOCK_SEED_DATA } from '../utils/dentalData';
 
 export const Login = () => {
   const { login } = useAuth();
@@ -29,6 +32,19 @@ export const Login = () => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
 
+  // Retrieve staff list for quick selection
+  const allStaffList = React.useMemo(() => {
+    try {
+      const savedDb = localStorage.getItem('smilecare_db_v2');
+      const db = savedDb ? JSON.parse(savedDb) : null;
+      const users = (db?.users || []).filter(u => u.role === 'Staff');
+      if (users.length > 0) return users;
+    } catch (e) {}
+    return [MOCK_SEED_DATA.users[1]];
+  }, []);
+
+  const [activeStaff, setActiveStaff] = useState(allStaffList[0] || MOCK_SEED_DATA.users[1]);
+
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     setError('');
@@ -36,6 +52,22 @@ export const Login = () => {
     if (!res.success) {
       setError(res.error);
     }
+  };
+
+  const handleQuickDoctorLogin = () => {
+    setError('');
+    setEmail('doctor@smilecare.com');
+    setPassword('Doctor@123');
+    login('doctor@smilecare.com', 'Doctor@123');
+  };
+
+  const handleQuickStaffLogin = (stf = activeStaff) => {
+    setError('');
+    const targetEmail = stf?.email || 'staff@smilecare.com';
+    const targetPassword = stf?.password || 'Staff@123';
+    setEmail(targetEmail);
+    setPassword(targetPassword);
+    login(targetEmail, targetPassword);
   };
 
   const handleForgotSubmit = (e) => {
@@ -114,7 +146,7 @@ export const Login = () => {
 
         {/* Right Panel: Light Theme Authentication Form */}
         <div className="lg:col-span-6 p-6 sm:p-10 bg-white flex flex-col justify-center relative">
-          <div className="max-w-md mx-auto w-full space-y-6">
+          <div className="max-w-md mx-auto w-full space-y-5">
 
             {/* Header Title */}
             <div>
@@ -125,8 +157,119 @@ export const Login = () => {
                 Welcome Back
               </h2>
               <p className="text-xs text-slate-500 mt-1 font-medium">
-                Enter your authorized credentials to access Doctor or Staff workspace
+                Select your role or enter credentials to sign in
               </p>
+            </div>
+
+            {/* Quick Profile Selection Tabs (Doctor vs Staff) */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                <span>Select Login Profile</span>
+                <span className="text-[10px] text-brand-600 font-bold">1-Click Sign In Available</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Doctor Portal Option */}
+                <button
+                  type="button"
+                  id="login-select-doctor"
+                  onClick={() => {
+                    setEmail('doctor@smilecare.com');
+                    setPassword('Doctor@123');
+                    setError('');
+                  }}
+                  className={`p-3 rounded-2xl border text-left transition-all relative group cursor-pointer ${
+                    email.toLowerCase().includes('doctor') || email === ''
+                      ? 'border-brand-500 bg-brand-50/80 shadow-xs ring-2 ring-brand-500/20'
+                      : 'border-slate-200 hover:border-brand-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-7 h-7 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                      <Stethoscope className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-slate-900 truncate">Doctor Portal</div>
+                      <div className="text-[10px] font-extrabold text-brand-700 truncate">Dr. Tharma P, MDS</div>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium">doctor@smilecare.com</div>
+                </button>
+
+                {/* Staff Portal Option */}
+                <button
+                  type="button"
+                  id="login-select-staff"
+                  onClick={() => {
+                    const targetStaff = activeStaff || allStaffList[0] || MOCK_SEED_DATA.users[1];
+                    setEmail(targetStaff.email);
+                    setPassword(targetStaff.password || 'Staff@123');
+                    setError('');
+                  }}
+                  className={`p-3 rounded-2xl border text-left transition-all relative group cursor-pointer ${
+                    email.toLowerCase().includes('staff') || (activeStaff && email.toLowerCase() === activeStaff.email?.toLowerCase())
+                      ? 'border-tealbrand-500 bg-tealbrand-50/80 shadow-xs ring-2 ring-tealbrand-500/20'
+                      : 'border-slate-200 hover:border-tealbrand-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-7 h-7 rounded-xl bg-tealbrand-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                      <UserCheck className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-slate-900 truncate">Staff Portal</div>
+                      <div className="text-[10px] font-extrabold text-tealbrand-700 truncate">{activeStaff?.name || 'Priya Dharshini'}</div>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium truncate">{activeStaff?.email || 'staff@smilecare.com'}</div>
+                </button>
+              </div>
+
+              {/* Registered staff selector if more than 1 staff exists */}
+              {allStaffList.length > 1 && (
+                <div className="pt-1">
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Select Staff Member:</label>
+                  <select
+                    value={activeStaff?.email || ''}
+                    onChange={(e) => {
+                      const sel = allStaffList.find(s => s.email === e.target.value);
+                      if (sel) {
+                        setActiveStaff(sel);
+                        setEmail(sel.email);
+                        setPassword(sel.password || 'Staff@123');
+                        setError('');
+                      }
+                    }}
+                    className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-tealbrand-500"
+                  >
+                    {allStaffList.map(stf => (
+                      <option key={stf.id || stf.email} value={stf.email}>
+                        👩‍💼 {stf.name} ({stf.title || 'Staff'}) - {stf.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Quick 1-Click Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                id="btn-quick-login-doctor"
+                onClick={handleQuickDoctorLogin}
+                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              >
+                <span>⚡ Sign In as Doctor</span>
+              </button>
+              <button
+                type="button"
+                id="btn-quick-login-staff"
+                onClick={() => handleQuickStaffLogin(activeStaff)}
+                className="py-2.5 px-3 bg-tealbrand-600 hover:bg-tealbrand-700 text-white text-[11px] font-extrabold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+              >
+                <span>⚡ Sign In as Staff</span>
+              </button>
             </div>
 
             {/* Error Message Box */}
@@ -137,19 +280,20 @@ export const Login = () => {
             )}
 
             {/* Sign In Form */}
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <form onSubmit={handleLoginSubmit} className="space-y-3.5 pt-1">
               <div>
                 <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Clinic Email Address
+                  Clinic Email or Shortcode
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
-                    type="email"
-                    placeholder="Enter Your Login ID"
+                    type="text"
+                    id="login-email-input"
+                    placeholder="doctor@smilecare.com or staff@smilecare.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-2xl border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-2xl border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                     required
                   />
                 </div>
@@ -172,10 +316,11 @@ export const Login = () => {
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    id="login-password-input"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-3 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-2xl border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 hover:bg-slate-100/80 focus:bg-white rounded-2xl border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                     required
                   />
                   <button
@@ -191,9 +336,10 @@ export const Login = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3.5 bg-gradient-to-r from-brand-600 via-tealbrand-600 to-brand-700 hover:opacity-95 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-brand-500/25 transition-all flex items-center justify-center gap-2 group mt-3 active:scale-[0.99]"
+                id="login-submit-button"
+                className="w-full py-3 bg-gradient-to-r from-brand-600 via-tealbrand-600 to-brand-700 hover:opacity-95 text-white font-extrabold text-xs rounded-2xl shadow-md shadow-brand-500/25 transition-all flex items-center justify-center gap-2 group cursor-pointer active:scale-[0.99]"
               >
-                <span>Sign In to Clinic Portal</span>
+                <span>Sign In to {email.toLowerCase().includes('staff') ? `${activeStaff?.name || 'Staff'} Workspace` : 'Doctor Workspace'}</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
 
