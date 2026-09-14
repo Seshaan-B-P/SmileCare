@@ -1,26 +1,34 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { MOCK_SEED_DATA } from '../utils/dentalData';
 import { fetchApi } from '../services/api';
 import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 
-function mergeRecords(cloudList, localList, idKey = 'id') {
-  const map = new Map();
-  (localList || []).forEach(item => {
-    if (item) {
-      const key = item[idKey] || item._id;
-      if (key) map.set(String(key).toLowerCase(), item);
-    }
-  });
-  (cloudList || []).forEach(item => {
-    if (item) {
-      const key = item[idKey] || item._id;
-      if (key) map.set(String(key).toLowerCase(), item);
-    }
-  });
-  return Array.from(map.values());
-}
+const EMPTY_DATABASE = {
+  patients: [],
+  appointments: [],
+  dentalCharts: {},
+  consultations: [],
+  invoices: [],
+  followUps: [],
+  users: [],
+  activityLog: [],
+  clinicProfile: {
+    name: 'SmileCare Speciality Dental Clinic & Implant Centre',
+    tagline: 'Precision Dental Care & Advanced Odontogram Technology',
+    address: 'No. 42, 2nd Avenue, Anna Nagar West, Chennai, Tamil Nadu 600040',
+    phone: '+91 44 2621 8899',
+    email: 'chennai@smilecare.in',
+    website: 'https://smilecare-tn.in',
+    registrationNo: 'TN-MOH-2024-884',
+    taxId: '33AAACS9948M1Z2',
+    workingHours: 'Mon - Sat: 9:00 AM - 8:00 PM | Sun: 9:30 AM - 1:30 PM',
+    slotDurationMinutes: 30,
+    defaultConsultationFee: 500,
+    whatsAppApiStatus: 'Connected',
+    whatsAppPhoneNumber: '+919840123456'
+  }
+};
 
 export const DataProvider = ({ children }) => {
   const { currentUser, isDoctor, activeRole, updateCurrentUser } = useAuth();
@@ -31,33 +39,15 @@ export const DataProvider = ({ children }) => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const cleanUsers = (parsed.users || []).filter(u => u.name !== 'Mark Davis');
-        const doctorExists = cleanUsers.some(u => u.role === 'Doctor' || u.email === 'doctor@smilecare.com');
-        if (!doctorExists && MOCK_SEED_DATA.users[0]) {
-          cleanUsers.unshift(MOCK_SEED_DATA.users[0]);
-        }
-        const staffExists = cleanUsers.some(u => u.role === 'Staff');
-        if (!staffExists && MOCK_SEED_DATA.users[1]) {
-          cleanUsers.push(MOCK_SEED_DATA.users[1]);
-        }
         return {
-          ...parsed,
-          users: cleanUsers
+          ...EMPTY_DATABASE,
+          ...parsed
         };
       } catch (e) {
-        console.error(e);
+        console.error('Local cache parse error:', e);
       }
     }
-    return {
-      ...MOCK_SEED_DATA,
-      patients: [],
-      appointments: [],
-      dentalCharts: {},
-      consultations: [],
-      invoices: [],
-      followUps: [],
-      activityLog: []
-    };
+    return EMPTY_DATABASE;
   });
 
   const [toast, setToast] = useState(null);
@@ -115,51 +105,36 @@ export const DataProvider = ({ children }) => {
       setCloudSyncStatus(prev => ({ ...prev, connected: false, loading: false }));
     });
 
-    // Fetch live data from MongoDB Atlas
+    // Fetch live data directly from MongoDB Atlas
     fetchApi('/data', 'GET').then(res => {
       isCloudLoaded.current = true;
       if (res && res.success && res.data) {
         setData(prev => {
-          const rawUsers = (res.data.users || []).filter(u => u.name !== 'Mark Davis');
-          const userMap = new Map();
-          rawUsers.forEach(u => {
-            const key = u.id || (u.email && u.email.trim() !== '' ? u.email.toLowerCase() : `usr_${Math.random()}`);
-            if (u.email === 'doctor@smilecare.com' || u.id === 'usr_doc_1') {
-              u.role = 'Doctor';
-            }
-            userMap.set(key, u);
-          });
-          const uniqueUsers = Array.from(userMap.values());
+          const liveUsers = Array.isArray(res.data.users) ? res.data.users : prev.users;
+          const livePatients = Array.isArray(res.data.patients) ? res.data.patients : prev.patients;
+          const liveAppointments = Array.isArray(res.data.appointments) ? res.data.appointments : prev.appointments;
+          const liveConsultations = Array.isArray(res.data.consultations) ? res.data.consultations : prev.consultations;
+          const liveInvoices = Array.isArray(res.data.invoices) ? res.data.invoices : prev.invoices;
+          const liveCharts = (res.data.dentalCharts && typeof res.data.dentalCharts === 'object') ? res.data.dentalCharts : prev.dentalCharts;
+          const liveFollowUps = Array.isArray(res.data.followUps) ? res.data.followUps : prev.followUps;
+          const liveActivity = Array.isArray(res.data.activityLog) ? res.data.activityLog : prev.activityLog;
+          const liveProfile = res.data.clinicProfile || prev.clinicProfile;
 
-          const mergedPatients = mergeRecords(res.data.patients, prev.patients, 'id');
-          const mergedAppointments = mergeRecords(res.data.appointments, prev.appointments, 'id');
-          const mergedConsultations = mergeRecords(res.data.consultations, prev.consultations, 'id');
-          const mergedInvoices = mergeRecords(res.data.invoices, prev.invoices, 'id');
-          const mergedUsers = uniqueUsers.length > 0 ? uniqueUsers : prev.users;
-          const mergedCharts = { ...(prev.dentalCharts || {}), ...(res.data.dentalCharts || {}) };
-          const mergedFollowUps = mergeRecords(res.data.followUps, prev.followUps, 'id');
-          const mergedActivity = mergeRecords(res.data.activityLog, prev.activityLog, 'id');
-
-          const merged = {
-            ...prev,
-            patients: mergedPatients,
-            appointments: mergedAppointments,
-            consultations: mergedConsultations,
-            invoices: mergedInvoices,
-            users: mergedUsers,
-            dentalCharts: mergedCharts,
-            followUps: mergedFollowUps,
-            activityLog: mergedActivity,
-            clinicProfile: res.data.clinicProfile || prev.clinicProfile
+          const updated = {
+            patients: livePatients,
+            appointments: liveAppointments,
+            consultations: liveConsultations,
+            invoices: liveInvoices,
+            users: liveUsers,
+            dentalCharts: liveCharts,
+            followUps: liveFollowUps,
+            activityLog: liveActivity,
+            clinicProfile: liveProfile
           };
 
-          // If local records exist that were not yet in cloud, push merged state up to Atlas!
-          const cloudPatientCount = Array.isArray(res.data.patients) ? res.data.patients.length : 0;
-          if (mergedPatients.length > cloudPatientCount) {
-            fetchApi('/sync', 'POST', merged).then(() => {
-              setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
-            }).catch(console.warn);
-          }
+          try {
+            localStorage.setItem('smilecare_db_v2', JSON.stringify(updated));
+          } catch (e) {}
 
           // Sync doctor and user credentials from MongoDB Atlas cloud directly to AuthContext ONLY IF currently logged-in as Doctor
           const savedUser = localStorage.getItem('smilecare_user');
@@ -167,17 +142,17 @@ export const DataProvider = ({ children }) => {
           try { currentSession = savedUser ? JSON.parse(savedUser) : null; } catch (e) {}
           const isCurrentSessionDoctor = currentSession?.role === 'Doctor' || currentSession?.email === 'doctor@smilecare.com';
 
-          const cloudDoc = res.data.currentUser || (uniqueUsers || []).find(u => u.role === 'Doctor' || u.id === 'usr_doc_1');
+          const cloudDoc = res.data.currentUser || (liveUsers || []).find(u => u.role === 'Doctor' || u.id === 'usr_doc_1');
           if (isCurrentSessionDoctor && cloudDoc && cloudDoc.avatar && updateCurrentUser) {
             updateCurrentUser(cloudDoc);
           }
 
-          return merged;
+          return updated;
         });
       }
     }).catch(err => {
       isCloudLoaded.current = true;
-      console.warn('Fetch from MongoDB Atlas failed, using local storage:', err);
+      console.warn('Live database fetch notice, using cached data:', err);
     });
   }, []);
 
@@ -647,16 +622,7 @@ export const DataProvider = ({ children }) => {
   };
 
   const clearAllData = () => {
-    const emptyState = {
-      ...MOCK_SEED_DATA,
-      patients: [],
-      appointments: [],
-      dentalCharts: {},
-      consultations: [],
-      invoices: [],
-      followUps: [],
-      activityLog: []
-    };
+    const emptyState = { ...EMPTY_DATABASE };
     setData(emptyState);
     localStorage.setItem('smilecare_db_v2', JSON.stringify(emptyState));
     localStorage.removeItem('smilecare_db_v1');

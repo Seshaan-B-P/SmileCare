@@ -17,10 +17,11 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { MOCK_SEED_DATA } from '../utils/dentalData';
+import { useData } from '../context/DataContext';
 
 export const Login = () => {
   const { login } = useAuth();
+  const { users } = useData();
 
   // Sign In states (Starts empty for user input)
   const [email, setEmail] = useState('');
@@ -32,23 +33,27 @@ export const Login = () => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
 
-  // Retrieve staff list for quick selection
+  // Retrieve live database users
   const allStaffList = React.useMemo(() => {
-    try {
-      const savedDb = localStorage.getItem('smilecare_db_v2');
-      const db = savedDb ? JSON.parse(savedDb) : null;
-      const users = (db?.users || []).filter(u => u.role === 'Staff');
-      if (users.length > 0) return users;
-    } catch (e) {}
-    return [MOCK_SEED_DATA.users[1]];
-  }, []);
+    return (users || []).filter(u => u.role === 'Staff');
+  }, [users]);
 
-  const [activeStaff, setActiveStaff] = useState(allStaffList[0] || MOCK_SEED_DATA.users[1]);
+  const doctorUser = React.useMemo(() => {
+    return (users || []).find(u => u.role === 'Doctor') || { name: 'Dr. Tharma P, MDS', email: 'doctor@smilecare.com' };
+  }, [users]);
 
-  const handleLoginSubmit = (e) => {
+  const [activeStaff, setActiveStaff] = useState(null);
+
+  React.useEffect(() => {
+    if (allStaffList.length > 0 && !activeStaff) {
+      setActiveStaff(allStaffList[0]);
+    }
+  }, [allStaffList, activeStaff]);
+
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const res = login(email, password);
+    const res = await login(email, password);
     if (!res.success) {
       setError(res.error);
     }
@@ -56,12 +61,14 @@ export const Login = () => {
 
   const handleQuickDoctorLogin = () => {
     setError('');
-    setEmail('doctor@smilecare.com');
-    setPassword('Doctor@123');
-    login('doctor@smilecare.com', 'Doctor@123');
+    const targetEmail = doctorUser?.email || 'doctor@smilecare.com';
+    const targetPassword = doctorUser?.password || 'Doctor@123';
+    setEmail(targetEmail);
+    setPassword(targetPassword);
+    login(targetEmail, targetPassword);
   };
 
-  const handleQuickStaffLogin = (stf = activeStaff) => {
+  const handleQuickStaffLogin = (stf = activeStaff || allStaffList[0]) => {
     setError('');
     const targetEmail = stf?.email || 'staff@smilecare.com';
     const targetPassword = stf?.password || 'Staff@123';
@@ -190,10 +197,10 @@ export const Login = () => {
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-black text-slate-900 truncate">Doctor Portal</div>
-                      <div className="text-[10px] font-extrabold text-brand-700 truncate">Dr. Tharma P, MDS</div>
+                      <div className="text-[10px] font-extrabold text-brand-700 truncate">{doctorUser?.name || 'Dr. Tharma P, MDS'}</div>
                     </div>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium">doctor@smilecare.com</div>
+                  <div className="text-[10px] text-slate-500 font-medium">{doctorUser?.email || 'doctor@smilecare.com'}</div>
                 </button>
 
                 {/* Staff Portal Option */}
@@ -201,9 +208,14 @@ export const Login = () => {
                   type="button"
                   id="login-select-staff"
                   onClick={() => {
-                    const targetStaff = activeStaff || allStaffList[0] || MOCK_SEED_DATA.users[1];
-                    setEmail(targetStaff.email);
-                    setPassword(targetStaff.password || 'Staff@123');
+                    const targetStaff = activeStaff || allStaffList[0];
+                    if (targetStaff) {
+                      setEmail(targetStaff.email);
+                      setPassword(targetStaff.password || 'Staff@123');
+                    } else {
+                      setEmail('staff@smilecare.com');
+                      setPassword('Staff@123');
+                    }
                     setError('');
                   }}
                   className={`p-3 rounded-2xl border text-left transition-all relative group cursor-pointer ${
@@ -218,10 +230,10 @@ export const Login = () => {
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-black text-slate-900 truncate">Staff Portal</div>
-                      <div className="text-[10px] font-extrabold text-tealbrand-700 truncate">{activeStaff?.name || 'Priya Dharshini'}</div>
+                      <div className="text-[10px] font-extrabold text-tealbrand-700 truncate">{activeStaff?.name || allStaffList[0]?.name || 'Clinic Staff'}</div>
                     </div>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium truncate">{activeStaff?.email || 'staff@smilecare.com'}</div>
+                  <div className="text-[10px] text-slate-500 font-medium truncate">{activeStaff?.email || allStaffList[0]?.email || 'staff@smilecare.com'}</div>
                 </button>
               </div>
 

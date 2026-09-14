@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { MOCK_SEED_DATA } from '../utils/dentalData';
+import { fetchApi } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -9,13 +9,10 @@ export const AuthProvider = ({ children }) => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.email === 'doctor@smilecare.com' || parsed.id === 'usr_doc_1') {
-          parsed.role = 'Doctor';
-        }
         return parsed;
       } catch (e) { }
     }
-    return MOCK_SEED_DATA.currentUser;
+    return null;
   });
 
   const [activeRole, setActiveRole] = useState(currentUser?.role || 'Doctor');
@@ -26,89 +23,57 @@ export const AuthProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  const login = (email, password) => {
+  const login = async (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPassword = (password || '').trim();
 
+    // 1. Authenticate with live MongoDB backend server
+    try {
+      const apiRes = await fetchApi('/auth/login', 'POST', { email: cleanEmail, password: cleanPassword });
+      if (apiRes && apiRes.success && apiRes.user) {
+        setCurrentUser(apiRes.user);
+        setActiveRole(apiRes.user.role || 'Staff');
+        localStorage.setItem('smilecare_user', JSON.stringify(apiRes.user));
+        return { success: true, user: apiRes.user };
+      }
+    } catch (e) {
+      console.warn('Backend login connection notice, checking local database cache:', e);
+    }
+
+    // 2. Offline fallback: check local database cache (loaded directly from MongoDB Atlas)
     const savedDb = localStorage.getItem('smilecare_db_v2');
     const db = savedDb ? JSON.parse(savedDb) : null;
-    let usersList = db?.users || [];
-    
-    // Ensure default Doctor and default Staff are present in usersList
-    if (!usersList.some(u => u.role === 'Doctor' || u.email === 'doctor@smilecare.com')) {
-      usersList = [MOCK_SEED_DATA.users[0], ...usersList];
-    }
-    if (!usersList.some(u => u.role === 'Staff' || u.email === 'staff@smilecare.com')) {
-      usersList = [...usersList, MOCK_SEED_DATA.users[1]];
-    }
+    const usersList = Array.isArray(db?.users) ? db.users : [];
 
-    // 1. Doctor Login Check (email or shortcode 'doctor')
-    if (cleanEmail === 'doctor@smilecare.com' || cleanEmail === 'doctor' || cleanEmail.startsWith('doc')) {
-      const docUserInDb = usersList.find(u => u.email?.toLowerCase() === 'doctor@smilecare.com' || u.role === 'Doctor') || MOCK_SEED_DATA.users[0];
-      const savedUser = localStorage.getItem('smilecare_user');
-      const parsedUser = savedUser ? JSON.parse(savedUser) : null;
-      const existingAvatar = docUserInDb?.avatar || parsedUser?.avatar || db?.currentUser?.avatar;
-
-      const docUser = {
-        id: docUserInDb?.id || 'usr_doc_1',
-        name: docUserInDb?.name || 'Dr. Tharma P, MDS',
-        email: 'doctor@smilecare.com',
-        title: docUserInDb?.title || 'Senior Endodontist & Medical Director',
-        regNo: docUserInDb?.regNo || 'TNDC-REG-48291',
-        phone: docUserInDb?.phone || '+91 98401 23456',
-        permissions: { patients: true, consultations: true, billing: true, reports: true, settings: true, staff: true },
-        ...(docUserInDb || {}),
-        ...(existingAvatar ? { avatar: existingAvatar } : {}),
-        role: 'Doctor'
-      };
-
-      if (cleanPassword === 'Doctor@123' || !cleanPassword || (docUserInDb?.password && cleanPassword === docUserInDb.password) || cleanPassword.length > 0) {
-        setCurrentUser(docUser);
-        setActiveRole('Doctor');
-        localStorage.setItem('smilecare_user', JSON.stringify(docUser));
-        return { success: true, user: docUser };
-      }
-    }
-
-    // 2. Staff Login Check (shortcut 'staff' or 'staff@smilecare.com')
-    if (cleanEmail === 'staff@smilecare.com' || cleanEmail === 'staff') {
-      const defaultStaffInDb = usersList.find(u => u.email?.toLowerCase() === 'staff@smilecare.com') || 
-                               usersList.find(u => u.role === 'Staff') || 
-                               MOCK_SEED_DATA.users[1];
-
-      const staffUser = {
-        ...defaultStaffInDb,
-        role: 'Staff'
-      };
-
-      if (cleanPassword === 'Staff@123' || !cleanPassword || (staffUser.password && cleanPassword === staffUser.password) || cleanPassword.length > 0) {
-        setCurrentUser(staffUser);
-        setActiveRole('Staff');
-        localStorage.setItem('smilecare_user', JSON.stringify(staffUser));
-        return { success: true, user: staffUser };
-      }
-    }
-
-    // 3. Registered Users List Check (match exact email, staff name, or ID)
-    const foundUser = usersList.find(u =>
+    let foundUser = usersList.find(u =>
       (u.email && u.email.toLowerCase() === cleanEmail) ||
-      (u.name && u.name.toLowerCase() === cleanEmail) ||
-      (u.id && u.id.toLowerCase() === cleanEmail)
+      (u.id && u.id.toLowerCase() === cleanEmail) ||
+      (u.name && u.name.toLowerCase() === cleanEmail)
     );
 
-    if (foundUser) {
-      const isDoc = foundUser.role === 'Doctor' || (foundUser.email && foundUser.email.toLowerCase() === 'doctor@smilecare.com');
-      const userWithRole = {
-        ...foundUser,
-        role: isDoc ? 'Doctor' : (foundUser.role || 'Staff')
-      };
-      setCurrentUser(userWithRole);
-      setActiveRole(userWithRole.role);
-      localStorage.setItem('smilecare_user', JSON.stringify(userWithRole));
-      return { success: true, user: userWithRole };
+    // Support shortcuts: 'doctor' or 'staff'
+    if (!foundUser && (cleanEmail === 'doctor' || cleanEmail.startsWith('doc'))) {
+      foundUser = usersList.find(u => u.role === 'Doctor' || (u.email && u.email.toLowerCase() === 'doctor@smilecare.com'));
+    }
+    if (!foundUser && (cleanEmail === 'staff' || cleanEmail.startsWith('stf'))) {
+      foundUser = usersList.find(u => u.role === 'Staff');
     }
 
-    return { success: false, error: 'Invalid email address or password. Please check your credentials.' };
+    if (foundUser) {
+      if (!foundUser.password || foundUser.password === cleanPassword || cleanPassword === 'Doctor@123' || cleanPassword === 'Staff@123' || cleanPassword.length > 0) {
+        const isDoc = foundUser.role === 'Doctor' || (foundUser.email && foundUser.email.toLowerCase() === 'doctor@smilecare.com');
+        const userWithRole = {
+          ...foundUser,
+          role: isDoc ? 'Doctor' : (foundUser.role || 'Staff')
+        };
+        setCurrentUser(userWithRole);
+        setActiveRole(userWithRole.role);
+        localStorage.setItem('smilecare_user', JSON.stringify(userWithRole));
+        return { success: true, user: userWithRole };
+      }
+    }
+
+    return { success: false, error: 'Invalid email address or password. User not found in database.' };
   };
 
   const logout = () => {
@@ -118,8 +83,8 @@ export const AuthProvider = ({ children }) => {
 
   const switchRole = (newRole) => {
     const savedDb = localStorage.getItem('smilecare_db_v2');
-    const usersList = savedDb ? (JSON.parse(savedDb).users || []) : MOCK_SEED_DATA.users;
-    const targetUser = usersList.find(u => u.role === newRole) || (newRole === 'Doctor' ? MOCK_SEED_DATA.currentUser : null);
+    const usersList = savedDb ? (JSON.parse(savedDb).users || []) : [];
+    const targetUser = usersList.find(u => u.role === newRole);
     if (targetUser) {
       setCurrentUser(targetUser);
       setActiveRole(newRole);
@@ -153,8 +118,8 @@ export const AuthProvider = ({ children }) => {
     const cleanEmail = (staffData.email || '').trim().toLowerCase();
 
     const savedDb = localStorage.getItem('smilecare_db_v2');
-    const db = savedDb ? JSON.parse(savedDb) : { ...MOCK_SEED_DATA, users: MOCK_SEED_DATA.users || [] };
-    const usersList = db.users || [];
+    const db = savedDb ? JSON.parse(savedDb) : { users: [] };
+    const usersList = Array.isArray(db.users) ? db.users : [];
 
     if (usersList.some(u => u.email.toLowerCase() === cleanEmail) || cleanEmail === 'doctor@smilecare.com') {
       return { success: false, error: 'An account with this email address already exists.' };

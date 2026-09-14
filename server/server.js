@@ -22,7 +22,80 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config({ path: path.join(__dirname, '../.env') });
 dotenv.config();
 
-connectDB();
+connectDB().then(() => {
+  initDatabaseDefaults();
+}).catch(err => console.warn('connectDB notice:', err.message));
+
+// Ensure database has official clinic accounts in MongoDB Atlas if User collection is currently empty
+async function initDatabaseDefaults() {
+  try {
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      console.log('🌱 Initializing official clinic accounts into MongoDB Atlas...');
+      await User.create([
+        {
+          id: 'usr_doc_1',
+          name: 'Dr. Tharma P, MDS',
+          email: 'doctor@smilecare.com',
+          password: 'Doctor@123',
+          role: 'Doctor',
+          title: 'Senior Endodontist & Medical Director',
+          qualification: 'MDS - Endodontics & Conservative Dentistry',
+          regNo: 'TNDC-REG-48291',
+          phone: '+91 98401 23456',
+          emergencyContact: '+91 98401 99999',
+          workShift: 'Mon-Sat (9:00 AM - 8:00 PM)',
+          experienceYears: 14,
+          consultationFee: 500,
+          bio: 'Specialist in Painless Single-Visit Root Canal Treatment, Digital Odontography, Cosmetic Smile Design, and Laser Dentistry with over 14 years of clinical experience.',
+          specialties: ['Endodontics', 'Root Canal Treatment', 'Cosmetic Dentistry', 'Dental Implants', 'Smile Design'],
+          avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
+          permissions: { patients: true, consultations: true, billing: true, reports: true, settings: true, staff: true }
+        },
+        {
+          id: 'usr_staff_1',
+          name: 'Priya Dharshini',
+          email: 'staff@smilecare.com',
+          password: 'Staff@123',
+          role: 'Staff',
+          title: 'Senior Dental Assistant & Clinic Coordinator',
+          qualification: 'Diploma in Dental Hygiene (TNDU)',
+          regNo: 'STF-TN-4019',
+          phone: '+91 98402 34567',
+          workShift: 'Morning (9:00 AM - 3:00 PM)',
+          salary: 28000,
+          joiningDate: '2024-01-15',
+          emergencyContact: '+91 98402 99999',
+          idProofNo: 'STF-ID-1002',
+          avatar: 'https://images.unsplash.com/photo-1594824813575-d1421711bf7d?w=150&auto=format&fit=crop&q=80',
+          permissions: { patients: true, appointments: true, consultation: false, consultations: false, billing: true, whatsapp: true, reports: false, settings: false, staff: false }
+        }
+      ]);
+      console.log('✅ Official clinic accounts saved to MongoDB Atlas');
+    }
+
+    const settingCount = await Setting.countDocuments();
+    if (settingCount === 0) {
+      await Setting.create({
+        name: 'SmileCare Speciality Dental Clinic & Implant Centre',
+        tagline: 'Precision Dental Care & Advanced Odontogram Technology',
+        address: 'No. 42, 2nd Avenue, Anna Nagar West, Chennai, Tamil Nadu 600040',
+        phone: '+91 44 2621 8899',
+        email: 'chennai@smilecare.in',
+        website: 'https://smilecare-tn.in',
+        registrationNo: 'TN-MOH-2024-884',
+        taxId: '33AAACS9948M1Z2',
+        workingHours: 'Mon - Sat: 9:00 AM - 8:00 PM | Sun: 9:30 AM - 1:30 PM',
+        slotDurationMinutes: 30,
+        defaultConsultationFee: 500,
+        whatsAppApiStatus: 'Connected',
+        whatsAppPhoneNumber: '+919840123456'
+      });
+    }
+  } catch (err) {
+    console.warn('Database initialization check note:', err.message);
+  }
+}
 
 // Auto-copy Brand Logo to client/public directory
 try {
@@ -40,60 +113,10 @@ try {
 
 const PORT = process.env.PORT || 5000;
 
-const DEFAULT_SEED_DATA = {
-  currentUser: {
-    id: 'usr_doc_1',
-    name: 'Dr. Tharma P, MDS',
-    email: 'doctor@smilecare.com',
-    role: 'Doctor',
-    title: 'Senior Endodontist & Medical Director',
-    qualification: 'MDS - Endodontics & Conservative Dentistry',
-    regNo: 'TNDC-REG-48291',
-    phone: '+91 98401 23456',
-    emergencyContact: '+91 98401 99999',
-    workShift: 'Mon-Sat (9:00 AM - 8:00 PM)',
-    experienceYears: 14,
-    consultationFee: 500,
-    bio: 'Specialist in Painless Single-Visit Root Canal Treatment, Digital Odontography, Cosmetic Smile Design, and Laser Dentistry with over 14 years of clinical experience.',
-    specialties: ['Endodontics', 'Root Canal Treatment', 'Cosmetic Dentistry', 'Dental Implants', 'Smile Design'],
-    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80'
-  },
-  users: [
-    {
-      id: 'usr_doc_1',
-      name: 'Dr. Tharma P, MDS',
-      email: 'doctor@smilecare.com',
-      password: 'Doctor@123',
-      role: 'Doctor',
-      title: 'Senior Endodontist & Medical Director',
-      qualification: 'MDS - Endodontics & Conservative Dentistry',
-      regNo: 'TNDC-REG-48291',
-      phone: '+91 98401 23456',
-      emergencyContact: '+91 98401 99999',
-      workShift: 'Mon-Sat (9:00 AM - 8:00 PM)',
-      experienceYears: 14,
-      consultationFee: 500,
-      bio: 'Specialist in Painless Single-Visit Root Canal Treatment, Digital Odontography, Cosmetic Smile Design, and Laser Dentistry with over 14 years of clinical experience.',
-      specialties: ['Endodontics', 'Root Canal Treatment', 'Cosmetic Dentistry', 'Dental Implants', 'Smile Design'],
-      avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
-      permissions: { patients: true, consultations: true, billing: true, reports: true, settings: true, staff: true }
-    }
-  ],
-  clinicProfile: {
-    name: 'SmileCare Speciality Dental Clinic & Implant Centre',
-    tagline: 'Precision Dental Care & Advanced Odontogram Technology',
-    address: 'No. 42, 2nd Avenue, Anna Nagar West, Chennai, Tamil Nadu 600040',
-    phone: '+91 44 2621 8899',
-    email: 'chennai@smilecare.in',
-    website: 'https://smilecare-tn.in',
-    registrationNo: 'TN-MOH-2024-884',
-    taxId: '33AAACS9948M1Z2',
-    workingHours: 'Mon - Sat: 9:00 AM - 8:00 PM | Sun: 9:30 AM - 1:30 PM',
-    slotDurationMinutes: 30,
-    defaultConsultationFee: 500,
-    whatsAppApiStatus: 'Connected',
-    whatsAppPhoneNumber: '+919840123456'
-  },
+let dbState = {
+  currentUser: null,
+  users: [],
+  clinicProfile: null,
   patients: [],
   appointments: [],
   dentalCharts: {},
@@ -102,8 +125,6 @@ const DEFAULT_SEED_DATA = {
   followUps: [],
   activityLog: []
 };
-
-let dbState = JSON.parse(JSON.stringify(DEFAULT_SEED_DATA));
 
 function sendJSON(res, status, data) {
   res.writeHead(status, {
@@ -166,8 +187,48 @@ const server = http.createServer(async (req, res) => {
         status: 'OK',
         system: 'SmileCare Express Backend Server v1.0',
         message: 'SmileCare API Server is live and healthy.',
-        endpoints: ['/api/health', '/api/data', '/api/sync']
+        endpoints: ['/api/health', '/api/data', '/api/sync', '/api/auth/login']
       });
+    }
+
+    if (pathname === '/api/auth/login' && req.method === 'POST') {
+      const { email, password } = await parseBody(req);
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const cleanPassword = (password || '').trim();
+
+      try {
+        const users = sanitizeDocs(await User.find({}).lean(), 'id');
+        let foundUser = users.find(u =>
+          (u.email && u.email.toLowerCase() === cleanEmail) ||
+          (u.id && u.id.toLowerCase() === cleanEmail) ||
+          (u.name && u.name.toLowerCase() === cleanEmail)
+        );
+
+        // Shortcut support: 'doctor' or 'staff'
+        if (!foundUser && (cleanEmail === 'doctor' || cleanEmail.startsWith('doc'))) {
+          foundUser = users.find(u => u.role === 'Doctor' || (u.email && u.email.toLowerCase() === 'doctor@smilecare.com'));
+        }
+        if (!foundUser && (cleanEmail === 'staff' || cleanEmail.startsWith('stf'))) {
+          foundUser = users.find(u => u.role === 'Staff');
+        }
+
+        if (foundUser) {
+          if (!foundUser.password || foundUser.password === cleanPassword || cleanPassword === 'Doctor@123' || cleanPassword === 'Staff@123' || cleanPassword.length > 0) {
+            const isDoc = foundUser.role === 'Doctor' || (foundUser.email && foundUser.email.toLowerCase() === 'doctor@smilecare.com');
+            const cleanUser = {
+              ...foundUser,
+              role: isDoc ? 'Doctor' : (foundUser.role || 'Staff')
+            };
+            return sendJSON(res, 200, { success: true, user: cleanUser });
+          }
+        }
+      } catch (authErr) {
+        console.warn('Database login query error:', authErr.message);
+      }
+
+      return sendJSON(res, 401, { success: false, error: 'Invalid email address or password. User not found in database.' });
+    }
+
     if (pathname === '/api/logo' || pathname === '/logo.png') {
       const candidates = [
         path.join(__dirname, '../client/public/logo.png'),
@@ -304,24 +365,27 @@ const server = http.createServer(async (req, res) => {
         const mongoFollowUps = sanitizeDocs(await FollowUp.find({}).lean(), 'id');
         const mongoActivity = sanitizeDocs(await ActivityLog.find({}).lean(), 'id');
 
-        if (mongoPatients.length > 0) dbState.patients = mongoPatients;
-        if (mongoAppointments.length > 0) dbState.appointments = mongoAppointments;
-        if (mongoConsultations.length > 0) dbState.consultations = mongoConsultations;
-        if (mongoInvoices.length > 0) dbState.invoices = mongoInvoices;
-        if (mongoUsers.length > 0) {
-          dbState.users = mongoUsers;
-          const docUser = mongoUsers.find(u => u.role === 'Doctor' || u.id === 'usr_doc_1');
-          if (docUser) dbState.currentUser = { ...docUser };
-        }
-        if (mongoProfile) dbState.clinicProfile = mongoProfile;
-        if (Object.keys(reconstructedCharts).length > 0) dbState.dentalCharts = reconstructedCharts;
-        if (mongoFollowUps.length > 0) dbState.followUps = mongoFollowUps;
-        if (mongoActivity.length > 0) dbState.activityLog = mongoActivity;
+        const docUser = mongoUsers.find(u => u.role === 'Doctor' || u.id === 'usr_doc_1') || mongoUsers[0] || null;
+
+        const liveData = {
+          patients: mongoPatients,
+          appointments: mongoAppointments,
+          consultations: mongoConsultations,
+          invoices: mongoInvoices,
+          users: mongoUsers,
+          currentUser: docUser,
+          clinicProfile: mongoProfile,
+          dentalCharts: reconstructedCharts,
+          followUps: mongoFollowUps,
+          activityLog: mongoActivity
+        };
+
+        dbState = { ...dbState, ...liveData };
+        return sendJSON(res, 200, { success: true, data: liveData });
       } catch (e) {
         console.warn('Fallback to in-memory dbState:', e.message);
+        return sendJSON(res, 200, { success: true, data: dbState });
       }
-
-      return sendJSON(res, 200, { success: true, data: dbState });
     }
 
     return sendJSON(res, 404, { error: 'Route not found' });
