@@ -59,24 +59,6 @@ export const Login = () => {
     }
   };
 
-  const handleQuickDoctorLogin = () => {
-    setError('');
-    const targetEmail = doctorUser?.email || 'doctor@smilecare.com';
-    const targetPassword = doctorUser?.password || 'Doctor@123';
-    setEmail(targetEmail);
-    setPassword(targetPassword);
-    login(targetEmail, targetPassword);
-  };
-
-  const handleQuickStaffLogin = (stf = activeStaff || allStaffList[0]) => {
-    setError('');
-    const targetEmail = stf?.email || 'staff@smilecare.com';
-    const targetPassword = stf?.password || 'Staff@123';
-    setEmail(targetEmail);
-    setPassword(targetPassword);
-    login(targetEmail, targetPassword);
-  };
-
   const handleForgotSubmit = (e) => {
     e.preventDefault();
     setForgotSent(true);
@@ -170,9 +152,8 @@ export const Login = () => {
 
             {/* Quick Profile Selection Tabs (Doctor vs Staff) */}
             <div className="space-y-2">
-              <div className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center justify-between">
+              <div className="text-[11px] font-black uppercase tracking-wider text-slate-500">
                 <span>Select Login Profile</span>
-                <span className="text-[10px] text-brand-600 font-bold">1-Click Sign In Available</span>
               </div>
               
               <div className="grid grid-cols-2 gap-2.5">
@@ -181,8 +162,8 @@ export const Login = () => {
                   type="button"
                   id="login-select-doctor"
                   onClick={() => {
-                    setEmail('doctor@smilecare.com');
-                    setPassword('Doctor@123');
+                    setEmail(doctorUser?.email || 'doctor@smilecare.com');
+                    setPassword('');
                     setError('');
                   }}
                   className={`p-3 rounded-2xl border text-left transition-all relative group cursor-pointer ${
@@ -211,11 +192,10 @@ export const Login = () => {
                     const targetStaff = activeStaff || allStaffList[0];
                     if (targetStaff) {
                       setEmail(targetStaff.email);
-                      setPassword(targetStaff.password || 'Staff@123');
                     } else {
                       setEmail('staff@smilecare.com');
-                      setPassword('Staff@123');
                     }
+                    setPassword('');
                     setError('');
                   }}
                   className={`p-3 rounded-2xl border text-left transition-all relative group cursor-pointer ${
@@ -248,7 +228,7 @@ export const Login = () => {
                       if (sel) {
                         setActiveStaff(sel);
                         setEmail(sel.email);
-                        setPassword(sel.password || 'Staff@123');
+                        setPassword('');
                         setError('');
                       }
                     }}
@@ -262,26 +242,6 @@ export const Login = () => {
                   </select>
                 </div>
               )}
-            </div>
-
-            {/* Quick 1-Click Action Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                id="btn-quick-login-doctor"
-                onClick={handleQuickDoctorLogin}
-                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-              >
-                <span>⚡ Sign In as Doctor</span>
-              </button>
-              <button
-                type="button"
-                id="btn-quick-login-staff"
-                onClick={() => handleQuickStaffLogin(activeStaff)}
-                className="py-2.5 px-3 bg-tealbrand-600 hover:bg-tealbrand-700 text-white text-[11px] font-extrabold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-              >
-                <span>⚡ Sign In as Staff</span>
-              </button>
             </div>
 
             {/* Error Message Box */}
