@@ -102,7 +102,14 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
   };
 
   const filteredPatients = searchQuery.trim() 
-    ? patients.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.phone.includes(searchQuery))
+    ? (patients || []).filter(p => {
+        const query = searchQuery.toLowerCase();
+        return (
+          (p.name || '').toLowerCase().includes(query) ||
+          (p.id || p.patientId || p._id || '').toLowerCase().includes(query) ||
+          (p.phone || '').includes(searchQuery)
+        );
+      })
     : [];
 
   const pageTitles = {
@@ -150,7 +157,7 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
             {filteredPatients.length > 0 ? (
               filteredPatients.map(patient => (
                 <button
-                  key={patient.id}
+                  key={patient.id || patient._id}
                   onClick={() => {
                     if (onSelectPatient) onSelectPatient(patient);
                     setActiveTab('patients');

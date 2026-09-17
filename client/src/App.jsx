@@ -71,9 +71,13 @@ const AppContent = () => {
   }
 
   const handleNavigate = (newTab, patient = null) => {
+    const curPid = selectedPatient ? (selectedPatient.id || selectedPatient._id) : null;
+    const nextPid = patient ? (patient.id || patient._id) : null;
+    const isSamePatient = Boolean(patient && selectedPatient && curPid === nextPid);
+
     // Prevent duplicate entries if nothing changed
-    if (newTab === activeTab && (!patient || patient?.id === selectedPatient?.id)) {
-      if (patient !== selectedPatient) setSelectedPatient(patient);
+    if (newTab === activeTab && (!patient ? !selectedPatient : isSamePatient)) {
+      if (patient && patient !== selectedPatient) setSelectedPatient(patient);
       return;
     }
     setNavHistory(prev => [...prev, { tab: activeTab, patient: selectedPatient }]);
@@ -154,7 +158,10 @@ const AppContent = () => {
           {selectedPatient && activeTab === 'patients' ? (
             isDoctor || hasPermission('patients') ? (
               <PatientProfile
-                patient={patients.find(p => p.id === selectedPatient?.id) || selectedPatient}
+                patient={patients.find(p => {
+                  const targetId = selectedPatient?.id || selectedPatient?._id;
+                  return (p.id && p.id === targetId) || (p._id && p._id === targetId);
+                }) || selectedPatient}
                 onBack={handleBack}
                 onBookAppointment={handleBookForPatient}
                 onStartConsultation={handleStartConsultation}

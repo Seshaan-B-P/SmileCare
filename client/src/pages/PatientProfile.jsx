@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Phone, 
   Mail, 
@@ -52,8 +52,9 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
 
   if (!patient) return null;
 
-  const patientConsultations = consultations.filter(c => c.patientId === patient.id);
-  const patientInvoices = invoices.filter(i => i.patientId === patient.id);
+  const currentPatientId = patient.id || patient._id || '';
+  const patientConsultations = (consultations || []).filter(c => c.patientId === currentPatientId || (patient.id && c.patientId === patient.id) || (patient._id && c.patientId === patient._id));
+  const patientInvoices = (invoices || []).filter(i => i.patientId === currentPatientId || (patient.id && i.patientId === patient.id) || (patient._id && i.patientId === patient._id));
 
   const handleOpenWhatsApp = (e) => {
     e.preventDefault();
@@ -113,11 +114,11 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
         try {
           const webpDataUrl = canvas.toDataURL('image/webp', 0.85);
           setCurrentAvatar(webpDataUrl);
-          updatePatient(patient.id, { avatar: webpDataUrl });
+          updatePatient(currentPatientId, { avatar: webpDataUrl });
         } catch (err) {
           const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.85);
           setCurrentAvatar(jpegDataUrl);
-          updatePatient(patient.id, { avatar: jpegDataUrl });
+          updatePatient(currentPatientId, { avatar: jpegDataUrl });
         }
         if (showToast) showToast(`Updated photo for ${patient.name}`);
       };
@@ -129,7 +130,7 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
 
   const handleUploadSubmit = (e) => {
     e.preventDefault();
-    addPatientDocument(patient.id, {
+    addPatientDocument(currentPatientId, {
       id: `doc_${Date.now()}`,
       name: docName,
       type: docType,
@@ -221,7 +222,7 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
                 </span>
               </div>
               <div className="text-xs text-slate-500 font-medium mt-1 flex flex-wrap items-center gap-3">
-                <span>ID: <strong className="text-slate-800">{patient.id}</strong></span>
+                <span>ID: <strong className="text-slate-800">{currentPatientId}</strong></span>
                 <span>•</span>
                 <span>{patient.gender}, {patient.age} years</span>
                 <span>•</span>

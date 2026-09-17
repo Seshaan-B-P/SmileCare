@@ -102,8 +102,12 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
     e.target.value = '';
   };
 
-  const filteredPatients = patients.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase()) || p.phone.includes(search);
+  const filteredPatients = (patients || []).filter(p => {
+    const searchLower = (search || '').toLowerCase();
+    const nameMatch = (p.name || '').toLowerCase().includes(searchLower);
+    const idMatch = (p.id || p.patientId || p._id || '').toLowerCase().includes(searchLower);
+    const phoneMatch = (p.phone || '').includes(search);
+    const matchesSearch = !searchLower || nameMatch || idMatch || phoneMatch;
     const matchesGender = genderFilter === 'All' || p.gender === genderFilter;
     const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
     return matchesSearch && matchesGender && matchesStatus;
@@ -203,23 +207,29 @@ export const Patients = ({ onSelectPatient, onBookAppointmentForPatient }) => {
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {filteredPatients.map(p => (
-                <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                <tr key={p.id || p._id || p.phone} className="hover:bg-slate-50/80 transition-colors">
                   <td className="p-4 pl-6">
-                    <div className="flex items-center gap-3">
+                    <div 
+                      className="flex items-center gap-3 cursor-pointer group select-none" 
+                      onClick={() => onSelectPatient(p)}
+                      title="Click to view patient profile"
+                    >
                       {p.avatar ? (
                         <img
                           src={p.avatar}
                           alt={p.name}
-                          className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-brand-500/30 shrink-0"
+                          className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-brand-500/30 group-hover:ring-brand-500 group-hover:scale-105 transition-all shrink-0"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-500 to-tealbrand-500 text-white font-black flex items-center justify-center text-xs shadow-sm shrink-0">
-                          {p.name.split(' ').map(n => n[0]).join('')}
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-500 to-tealbrand-500 text-white font-black flex items-center justify-center text-xs shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all shrink-0">
+                          {(p.name || 'P').split(' ').map(n => n[0]).join('')}
                         </div>
                       )}
                       <div>
-                        <div className="font-black text-slate-900 text-sm">{p.name}</div>
-                        <div className="text-[11px] text-slate-500 font-medium mt-0.5">{p.id} • {p.gender}, {p.age}y</div>
+                        <div className="font-black text-slate-900 text-sm group-hover:text-brand-600 transition-colors flex items-center gap-1.5">
+                          <span>{p.name}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-medium mt-0.5">{p.id || p.patientId || p._id} • {p.gender}, {p.age}y</div>
                       </div>
                     </div>
                   </td>
