@@ -13,42 +13,55 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
   };
 
   const cleanPhone = (followUp.patientPhone || '').replace(/[^0-9]/g, '');
-  const bookingLink = `${window.location.origin}/#book?id=${followUp.id}`;
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const baseUrl = isLocal ? 'https://smile-care-rouge.vercel.app' : window.location.origin;
+  const bookingLink = `${baseUrl}/#book?id=${followUp.id}`;
 
-  const formattedWhatsAppTextTamil =
-    `*SmileCare பல் மருத்துவமனை - பரிசோதனை நினைவூட்டல்* 🦷
+  const formatDateToDMY = (dateStr) => {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}-${month}-${year}`;
+    }
+    return dateStr;
+  };
 
-வணக்கம் *${followUp.patientName}* அவர்களே, 
+  const formattedWhatsAppTextTamil = [
+    `🦷 SmileCare பல் மருத்துவமனை – பரிசோதனை நினைவூட்டல்`,
+    `வணக்கம் ${followUp.patientName} அவர்களே,`,
+    `SmileCare Dental Clinic-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:`,
+    `📌 சிகிச்சை / காரணம்: ${followUp.reason || 'Post-procedure Checkup'}`,
+    `📅 பரிந்துரைக்கப்பட்ட தேதி: ${formatDateToDMY(followUp.scheduledDate)}`,
+    `⏰ பரிந்துரைக்கப்பட்ட நேரம்: காலை 10:00 மணி`,
+    `உங்கள் Appointment-ஐ உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:`,
+    `🔗 ${bookingLink}`,
+    `நன்றி!`,
+    `SmileCare Speciality Dental Clinic 🦷`
+  ].join('\n');
 
-*SmileCare Dental Clinic*-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:
-
-• *சிகிச்சை / காரணம்:* ${followUp.reason}
-• *பரிந்துரைக்கப்பட்ட தேதி:* ${followUp.scheduledDate}
-• *பரிந்துரைக்கப்பட்ட நேரம்:* காலை 10:00 மணி
-
-உங்கள் முன்பதிவை (Appointment) உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:
-${bookingLink}
-
-நன்றி,
-*SmileCare Speciality Dental Clinic* 🏥`;
-
-  const formattedWhatsAppTextEnglish =
-    `*SmileCare Dental Appointment Notice* 🦷
-
-Hello *${followUp.patientName}*, this is a reminder from *SmileCare Dental Clinic* for your upcoming dental follow-up:
-
-• *Reason:* ${followUp.reason}
-• *Recommended Date:* ${followUp.scheduledDate}
-• *Suggested Time:* 10:00 AM Slot
-
-Click below to automatically reserve & confirm your appointment:
-${bookingLink}
-
-Thank you,
-*SmileCare Speciality Dental Clinic* 🏥`;
+  const formattedWhatsAppTextEnglish = [
+    `🦷 *SmileCare Dental Appointment Notice*`,
+    ``,
+    `Hello *${followUp.patientName}*, this is a reminder from *SmileCare Dental Clinic* for your upcoming dental follow-up:`,
+    ``,
+    `📋 *Reason / Procedure:* ${followUp.reason}`,
+    `🗓️ *Recommended Date:* ${followUp.scheduledDate}`,
+    `⏰ *Suggested Time:* 10:00 AM Slot`,
+    ``,
+    `Click below to confirm your appointment:`,
+    `👉 ${bookingLink}`,
+    ``,
+    `Thank you,`,
+    `🏥 *SmileCare Speciality Dental Clinic*`,
+    `📍 No. 42, Anna Nagar West, Chennai`,
+    `📞 +91 44 2621 8899`
+  ].join('\n');
 
   const formattedWhatsAppText = lang === 'ta' ? formattedWhatsAppTextTamil : formattedWhatsAppTextEnglish;
-  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(formattedWhatsAppText)}`;
+  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const whatsappUrl = isMobile
+    ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(formattedWhatsAppText)}`
+    : `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(formattedWhatsAppText)}`;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -96,26 +109,39 @@ Thank you,
             </span>
           </div>
 
-          <div className="bg-[#202C33] text-slate-100 p-4 rounded-2xl rounded-tl-none max-w-[95%] border border-[#2A3942] shadow-md space-y-3">
+          <div className="bg-[#202C33] text-slate-100 p-4 rounded-2xl rounded-tl-none max-w-[95%] border border-[#2A3942] shadow-md space-y-2.5 text-xs">
             {lang === 'ta' ? (
               <>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-teal-400">
-                  <Sparkles className="w-4 h-4" /> SmileCare பல் மருத்துவமனை - பரிசோதனை நினைவூட்டல்
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>🦷 SmileCare பல் மருத்துவமனை – பரிசோதனை நினைவூட்டல்</span>
                 </div>
 
-                <p className="text-xs text-slate-200 leading-relaxed">
-                  வணக்கம் <strong className="text-white">{followUp.patientName}</strong> அவர்களே, <strong className="text-emerald-300">SmileCare Dental Clinic</strong>-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:
+                <p className="text-slate-200">
+                  வணக்கம் <strong className="text-white">{followUp.patientName}</strong> அவர்களே,
                 </p>
 
-                <div className="bg-[#111B21] p-3.5 rounded-xl border border-[#222D34] text-xs space-y-1.5">
-                  <div><span className="text-slate-400">சிகிச்சை விவரம்:</span> <strong className="text-white">{followUp.reason}</strong></div>
-                  <div><span className="text-slate-400">பரிந்துரைக்கப்பட்ட தேதி:</span> <strong className="text-teal-300 font-bold">{followUp.scheduledDate}</strong></div>
-                  <div><span className="text-slate-400">நேரம்:</span> <strong className="text-teal-300 font-bold">காலை 10:00 மணி</strong></div>
+                <p className="text-slate-200">
+                  SmileCare Dental Clinic-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:
+                </p>
+
+                <div className="bg-[#111B21] p-3 rounded-xl border border-[#222D34] text-xs space-y-1 font-medium">
+                  <div>📌 <span className="text-slate-300">சிகிச்சை / காரணம்:</span> <strong className="text-white font-bold">{followUp.reason || 'Post-procedure Checkup'}</strong></div>
+                  <div>📅 <span className="text-slate-300">பரிந்துரைக்கப்பட்ட தேதி:</span> <strong className="text-teal-300 font-bold">{formatDateToDMY(followUp.scheduledDate)}</strong></div>
+                  <div>⏰ <span className="text-slate-300">பரிந்துரைக்கப்பட்ட நேரம்:</span> <strong className="text-teal-300 font-bold">காலை 10:00 மணி</strong></div>
                 </div>
 
                 <p className="text-[11px] text-slate-300">
-                  உங்கள் முன்பதிவை (Appointment) உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்.
+                  உங்கள் Appointment-ஐ உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:
                 </p>
+
+                <div className="text-[11px] text-teal-400 font-bold break-all flex items-center gap-1">
+                  <span>🔗</span> <span className="underline">{bookingLink}</span>
+                </div>
+
+                <div className="text-[11px] text-slate-400 pt-1">
+                  <div>நன்றி!</div>
+                  <div className="font-bold text-white mt-0.5">SmileCare Speciality Dental Clinic 🦷</div>
+                </div>
               </>
             ) : (
               <>

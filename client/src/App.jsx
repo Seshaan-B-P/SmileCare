@@ -23,6 +23,40 @@ import { BookingModal } from './components/appointments/BookingModal';
 import { InvoiceModal } from './components/billing/InvoiceModal';
 import { AutoBookingPortal } from './components/appointments/AutoBookingPortal';
 
+const extractBookingId = () => {
+  try {
+    if (typeof window === 'undefined') return null;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+
+    // 1. Check Hash: #book?id=FLP-301 or #book&id=FLP-301 or #book/FLP-301
+    if (hash.includes('book')) {
+      if (hash.includes('?')) {
+        const params = new URLSearchParams(hash.split('?')[1]);
+        const id = params.get('id') || params.get('book');
+        if (id) return id;
+      }
+      if (hash.includes('&')) {
+        const params = new URLSearchParams(hash.split('&')[1]);
+        const id = params.get('id') || params.get('book');
+        if (id) return id;
+      }
+      const parts = hash.split('/');
+      if (parts.length > 1 && parts[1]) {
+        return parts[1].replace(/[^a-zA-Z0-9_-]/g, '');
+      }
+    }
+
+    // 2. Check Search params: ?id=FLP-301 or ?book=FLP-301
+    if (search) {
+      const params = new URLSearchParams(search);
+      const id = params.get('id') || params.get('book') || params.get('followUpId');
+      if (id) return id;
+    }
+  } catch (e) {}
+  return null;
+};
+
 const AppContent = () => {
   const { currentUser, isDoctor, hasPermission } = useAuth();
   const { patients, bookAppointment, createInvoice } = useData();
@@ -34,24 +68,23 @@ const AppContent = () => {
   const [showGlobalBooking, setShowGlobalBooking] = useState(false);
   const [showGlobalBilling, setShowGlobalBilling] = useState(false);
 
-  const [patientPortalFollowUpId, setPatientPortalFollowUpId] = useState(null);
+  const [patientPortalFollowUpId, setPatientPortalFollowUpId] = useState(extractBookingId);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash;
-      if (hash.includes('#book')) {
-        const query = hash.split('?')[1];
-        if (query) {
-          const params = new URLSearchParams(query);
-          const id = params.get('id');
-          if (id) setPatientPortalFollowUpId(id);
-        }
+    const handleUrlChange = () => {
+      const detectedId = extractBookingId();
+      if (detectedId) {
+        setPatientPortalFollowUpId(detectedId);
       }
     };
 
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    handleUrlChange();
+    window.addEventListener('hashchange', handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
+    return () => {
+      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
+    };
   }, []);
 
   if (patientPortalFollowUpId) {
@@ -59,7 +92,13 @@ const AppContent = () => {
       <AutoBookingPortal
         followUpId={patientPortalFollowUpId}
         onClose={() => {
-          window.location.hash = '';
+          if (window.location.hash.includes('book')) {
+            window.location.hash = '';
+          }
+          if (window.location.search.includes('id=') || window.location.search.includes('book=')) {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
           setPatientPortalFollowUpId(null);
         }}
       />

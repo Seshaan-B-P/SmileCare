@@ -455,12 +455,19 @@ export const DataProvider = ({ children }) => {
     };
 
     const newLog = logActivity(`Auto-booked & confirmed slot for ${targetFollowUp.patientName} on ${targetFollowUp.scheduledDate}`, 'WhatsApp Bot', true);
-    setData(prev => ({
-      ...prev,
-      followUps: prev.followUps.map(f => f.id === followUpId ? { ...f, status: 'Confirmed via WhatsApp' } : f),
-      appointments: [newApt, ...prev.appointments],
-      activityLog: [newLog, ...prev.activityLog]
-    }));
+    const updatedFollowUps = data.followUps.map(f => f.id === followUpId ? { ...f, status: 'Confirmed via WhatsApp' } : f);
+    const updatedAppointments = [newApt, ...data.appointments];
+    const updatedActivity = [newLog, ...data.activityLog];
+
+    const nextData = {
+      ...data,
+      followUps: updatedFollowUps,
+      appointments: updatedAppointments,
+      activityLog: updatedActivity
+    };
+
+    setData(nextData);
+    fetchApi('/sync', 'POST', nextData).catch(err => console.warn('Sync notice:', err));
     showToast(`Appointment auto-booked & confirmed for ${targetFollowUp.patientName}!`);
   };
 

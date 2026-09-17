@@ -4,33 +4,55 @@ import { useData } from '../context/DataContext';
 import { WhatsAppSimulator } from '../components/whatsapp/WhatsAppSimulator';
 
 export const FollowUps = () => {
-  const { followUps, sendWhatsAppReminder } = useData();
+  const { followUps, sendWhatsAppReminder, showToast, clinicProfile } = useData();
   const [selectedFollowUp, setSelectedFollowUp] = useState(null);
 
   const handleOpenRealWhatsApp = (f) => {
     sendWhatsAppReminder(f.id);
     const cleanPhone = (f.patientPhone || '').replace(/[^0-9]/g, '');
-    const bookingLink = `${window.location.origin}/#book?id=${f.id}`;
 
-    const formattedMessage =
-      `*SmileCare பல் மருத்துவமனை - பரிசோதனை நினைவூட்டல்* 🦷
+    // Use deployed production domain if on localhost so external mobile recipients can open it
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const baseUrl = isLocal ? 'https://smile-care-rouge.vercel.app' : window.location.origin;
+    const bookingLink = `${baseUrl}/#book?id=${f.id}`;
 
-வணக்கம் *${f.patientName}* அவர்களே, 
+    const formatDateToDMY = (dateStr) => {
+      if (!dateStr) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}-${month}-${year}`;
+      }
+      return dateStr;
+    };
 
-*SmileCare Dental Clinic*-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:
+    const formattedMessage = [
+      `🦷 SmileCare பல் மருத்துவமனை – பரிசோதனை நினைவூட்டல்`,
+      `வணக்கம் ${f.patientName} அவர்களே,`,
+      `SmileCare Dental Clinic-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:`,
+      `📌 சிகிச்சை / காரணம்: ${f.reason || 'Post-procedure Checkup'}`,
+      `📅 பரிந்துரைக்கப்பட்ட தேதி: ${formatDateToDMY(f.scheduledDate)}`,
+      `⏰ பரிந்துரைக்கப்பட்ட நேரம்: காலை 10:00 மணி`,
+      `உங்கள் Appointment-ஐ உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:`,
+      `🔗 ${bookingLink}`,
+      `நன்றி!`,
+      `SmileCare Speciality Dental Clinic 🦷`
+    ].join('\n');
 
-• *சிகிச்சை / காரணம்:* ${f.reason}
-• *பரிந்துரைக்கப்பட்ட தேதி:* ${f.scheduledDate}
-• *பரிந்துரைக்கப்பட்ட நேரம்:* காலை 10:00 மணி
+    // Copy to clipboard as instant backup to prevent any Windows OS protocol emoji corruption
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(formattedMessage).catch(() => {});
+    }
+    if (showToast) {
+      showToast('Opening WhatsApp... (Message copied to clipboard)');
+    }
 
-உங்கள் முன்பதிவை (Appointment) உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:
-${bookingLink}
+    // Use web.whatsapp.com on PC/Desktop to prevent Windows protocol emoji corruption
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const whatsappUrl = isMobile
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(formattedMessage)}`
+      : `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(formattedMessage)}`;
 
-நன்றி,
-*SmileCare Speciality Dental Clinic* 🏥`;
-
-    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(formattedMessage)}`;
-    window.open(whatsappUrl, '_blank');
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleOpenSimulator = (f) => {
