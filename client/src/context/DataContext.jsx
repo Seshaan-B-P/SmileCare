@@ -243,15 +243,25 @@ export const DataProvider = ({ children }) => {
   };
 
   const updatePatient = (id, updatedFields) => {
-    const targetPatient = data.patients.find(p => p.id === id);
-    const newLog = logActivity(`Updated record for patient: ${targetPatient?.name || id}`);
+    const targetPatient = data.patients.find(p => (p.id && p.id === id) || (p._id && p._id === id) || (p.patientId && p.patientId === id));
+    const newLog = logActivity(`Updated profile for patient: ${updatedFields.name || targetPatient?.name || id}`);
+    let updatedPatientRecord = null;
     setData(prev => {
-      const nextPatients = prev.patients.map(p => p.id === id ? { ...p, ...updatedFields } : p);
+      const nextPatients = prev.patients.map(p => {
+        if ((p.id && p.id === id) || (p._id && p._id === id) || (p.patientId && p.patientId === id)) {
+          updatedPatientRecord = { ...p, ...updatedFields };
+          return updatedPatientRecord;
+        }
+        return p;
+      });
       const nextData = {
         ...prev,
         patients: nextPatients,
         activityLog: [newLog, ...prev.activityLog]
       };
+      try {
+        localStorage.setItem('smilecare_db_v2', JSON.stringify(nextData));
+      } catch (e) {}
       fetchApi('/sync', 'POST', nextData).then(res => {
         if (res && res.success) {
           setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
@@ -259,7 +269,8 @@ export const DataProvider = ({ children }) => {
       }).catch(console.warn);
       return nextData;
     });
-    showToast('Patient record updated');
+    showToast(`Patient ${updatedFields.name || targetPatient?.name || 'profile'} updated successfully!`);
+    return updatedPatientRecord;
   };
 
   const addPatientDocument = (patientId, docObj) => {
