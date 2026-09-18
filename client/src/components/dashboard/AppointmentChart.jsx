@@ -2,19 +2,24 @@ import React from 'react';
 import { PieChart, Activity } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
-export const AppointmentChart = () => {
-  const { appointments = [], consultations = [] } = useData();
+export const AppointmentChart = ({ appointments: propApts, consultations: propCns }) => {
+  const contextData = useData() || {};
+  const appointments = propApts || contextData.appointments || [];
+  const consultations = propCns || contextData.consultations || [];
 
   const totalCount = appointments.length + consultations.length;
 
   const rawCategories = [
-    { label: 'Root Canal (RCT)', keywords: ['rct', 'root canal'], color: 'bg-purple-600' },
-    { label: 'Composite Fillings', keywords: ['filling', 'composite', 'cavity'], color: 'bg-brand-500' },
-    { label: 'Scaling & Polishing', keywords: ['scaling', 'polishing', 'cleaning', 'hygiene'], color: 'bg-tealbrand-500' },
-    { label: 'Dental Crowns', keywords: ['crown', 'cap', 'zirconia'], color: 'bg-amber-500' },
-    { label: 'Extractions & Implants', keywords: ['extraction', 'implant', 'surgery'], color: 'bg-rose-500' },
+    { label: 'Root Canal (RCT)', keywords: ['rct', 'root canal', 'endodontic'], color: 'bg-purple-600', dotColor: 'bg-purple-600' },
+    { label: 'Composite Fillings', keywords: ['filling', 'composite', 'cavity', 'caries', 'restoration'], color: 'bg-brand-500', dotColor: 'bg-brand-500' },
+    { label: 'Scaling & Polishing', keywords: ['scaling', 'polishing', 'cleaning', 'hygiene', 'prophylaxis'], color: 'bg-tealbrand-500', dotColor: 'bg-tealbrand-500' },
+    { label: 'Dental Crowns & Bridges', keywords: ['crown', 'cap', 'zirconia', 'bridge', 'ceramic'], color: 'bg-amber-500', dotColor: 'bg-amber-500' },
+    { label: 'Extractions & Implants', keywords: ['extraction', 'implant', 'surgery', 'surgical', 'removal'], color: 'bg-rose-500', dotColor: 'bg-rose-500' },
+    { label: 'Orthodontics & Aligners', keywords: ['ortho', 'braces', 'aligner', 'wire'], color: 'bg-indigo-500', dotColor: 'bg-indigo-500' },
+    { label: 'General Consultation', keywords: ['consultation', 'checkup', 'exam', 'pain', 'routine'], color: 'bg-sky-500', dotColor: 'bg-sky-500' },
   ];
 
+  let totalMatched = 0;
   const categories = rawCategories.map(cat => {
     let matchCount = 0;
 
@@ -24,43 +29,52 @@ export const AppointmentChart = () => {
     });
 
     consultations.forEach(cns => {
-      const txt = `${cns.diagnosis || ''} ${cns.treatmentPlan || ''} ${cns.procedureNotes || ''}`.toLowerCase();
+      const txt = `${cns.diagnosis || ''} ${cns.treatmentPlan || ''} ${cns.procedureNotes || ''} ${cns.chiefComplaint || ''}`.toLowerCase();
       if (cat.keywords.some(k => txt.includes(k))) matchCount++;
     });
 
-    const percentVal = totalCount > 0 ? Math.round((matchCount / totalCount) * 100) : 0;
-    return { ...cat, count: matchCount, percent: `${percentVal}%`, percentNum: percentVal };
+    totalMatched += matchCount;
+    return { ...cat, count: matchCount };
   });
+
+  // Calculate actual percentages based on total cases or matched count
+  const effectiveTotal = Math.max(totalMatched, totalCount, 1);
+  const categoriesWithPercent = categories
+    .filter(cat => cat.count > 0 || totalMatched === 0)
+    .map(cat => {
+      const percentVal = totalCount > 0 ? Math.round((cat.count / effectiveTotal) * 100) : 0;
+      return { ...cat, percent: `${percentVal}%`, percentNum: percentVal };
+    });
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-soft">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h4 className="text-base font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-            <PieChart className="w-5 h-5 text-brand-600" /> Procedure Distribution
+            <PieChart className="w-5 h-5 text-brand-600" /> Procedure & Treatment Distribution
           </h4>
-          <p className="text-xs text-slate-500">Breakdown of treatments performed</p>
+          <p className="text-xs text-slate-500">Breakdown of clinical procedures performed ({totalCount} total events)</p>
         </div>
       </div>
 
       {totalCount > 0 ? (
         <>
           <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden flex shadow-inner my-4">
-            {categories.map((cat, idx) => (
+            {categoriesWithPercent.filter(c => c.count > 0).map((cat, idx) => (
               <div
                 key={idx}
-                style={{ width: cat.percent }}
+                style={{ width: `${Math.max(cat.percentNum, 5)}%` }}
                 className={`${cat.color} h-full transition-all hover:opacity-90`}
                 title={`${cat.label}: ${cat.count} cases (${cat.percent})`}
               />
             ))}
           </div>
 
-          <div className="space-y-2.5 mt-4">
-            {categories.map((cat, idx) => (
-              <div key={idx} className="flex items-center justify-between text-xs">
+          <div className="space-y-2 mt-4 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+            {categoriesWithPercent.map((cat, idx) => (
+              <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0">
                 <div className="flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full ${cat.color}`}></span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${cat.dotColor}`}></span>
                   <span className="font-semibold text-slate-700">{cat.label}</span>
                 </div>
                 <div className="font-bold text-slate-900">
