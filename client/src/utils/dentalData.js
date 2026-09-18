@@ -123,3 +123,26 @@ export const RX_TEMPLATES = [
     ]
   }
 ];
+
+export const CLINIC_SLOTS = [
+  '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+  '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM'
+];
+
+/**
+ * Returns the next available slot for a given date by checking against active appointments.
+ * If the preferredSlot is free, it returns it; otherwise it finds the next open slot from CLINIC_SLOTS.
+ */
+export const getNextAvailableSlot = (date, appointments = [], preferredSlot = '10:00 AM') => {
+  if (!date) return preferredSlot;
+  const bookedSlots = (appointments || [])
+    .filter(a => a.date === date && a.status !== 'Cancelled')
+    .map(a => a.timeSlot);
+
+  if (!bookedSlots.includes(preferredSlot)) {
+    return preferredSlot;
+  }
+
+  const nextFree = CLINIC_SLOTS.find(slot => !bookedSlots.includes(slot));
+  return nextFree || '05:30 PM';
+};

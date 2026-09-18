@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Smile, CalendarCheck, CheckCircle2, Sparkles, Clock, User, ShieldCheck, Phone, MapPin, AlertCircle, X } from 'lucide-react';
+import { Smile, CalendarCheck, CheckCircle2, Sparkles, Clock, User, ShieldCheck, Phone, MapPin, AlertCircle, X, Check } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
 export const AutoBookingPortal = ({ followUpId, onClose }) => {
-  const { followUps, confirmWhatsAppAutoBooking, clinicProfile } = useData();
+  const { followUps, appointments, clinicSlots, getNextAvailableSlot, confirmWhatsAppAutoBooking, clinicProfile } = useData();
   const [isLoading, setIsLoading] = useState(!followUps || followUps.length === 0);
 
   const cleanTargetId = (followUpId || '').trim();
   const followUp = (followUps || []).find(f => f.id === cleanTargetId || f._id === cleanTargetId) || (followUps && followUps.length > 0 ? followUps.find(f => f.id?.includes(cleanTargetId) || cleanTargetId.includes(f.id)) : null);
 
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState('10:00 AM');
 
+  // Compute booked slots on the target date
+  const bookedSlots = (appointments || [])
+    .filter(a => a.date === followUp?.scheduledDate && a.status !== 'Cancelled')
+    .map(a => a.timeSlot);
+
+  const slotsList = clinicSlots || [
+    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+    '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM'
+  ];
+
+  // Resolve best available default slot
   useEffect(() => {
     if (followUps && followUps.length > 0) {
       setIsLoading(false);
@@ -18,17 +30,40 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
   }, [followUps]);
 
   useEffect(() => {
-    if (followUp?.status === 'Confirmed via WhatsApp') {
-      setIsConfirmed(true);
+    if (followUp) {
+      if (followUp.status === 'Confirmed via WhatsApp') {
+        setIsConfirmed(true);
+      }
+      if (followUp.confirmedSlot) {
+        setSelectedSlot(followUp.confirmedSlot);
+      } else if (getNextAvailableSlot && followUp.scheduledDate) {
+        const nextFree = getNextAvailableSlot(followUp.scheduledDate, followUp.preferredSlot || '10:00 AM');
+        setSelectedSlot(nextFree);
+      } else {
+        const preferred = followUp.preferredSlot || '10:00 AM';
+        if (!bookedSlots.includes(preferred)) {
+          setSelectedSlot(preferred);
+        } else {
+          const fallback = slotsList.find(s => !bookedSlots.includes(s)) || '05:30 PM';
+          setSelectedSlot(fallback);
+        }
+      }
     }
-  }, [followUp?.status]);
+  }, [followUp, appointments]);
 
   const handleConfirm = () => {
     if (followUp?.id) {
-      confirmWhatsAppAutoBooking(followUp.id);
+      confirmWhatsAppAutoBooking(followUp.id, selectedSlot);
       setIsConfirmed(true);
     }
   };
+
+  const confirmedApt = (appointments || []).find(
+    a => a.date === followUp?.scheduledDate && 
+         (a.patientId === followUp?.patientId || a.patientName === followUp?.patientName) &&
+         a.status !== 'Cancelled'
+  );
+  const finalConfirmedSlot = followUp?.confirmedSlot || confirmedApt?.timeSlot || selectedSlot;
 
   const clinicName = clinicProfile?.name || 'SmileCare Speciality Dental Clinic & Implant Centre';
   const clinicPhone = clinicProfile?.phone || '+91 44 2621 8899';
@@ -126,8 +161,10 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
                   <span className="text-emerald-800 font-black">{followUp.scheduledDate}</span>
                 </div>
                 <div className="flex justify-between border-b border-emerald-100 pb-1.5">
-                  <span className="text-slate-500 font-normal">Time Slot:</span>
-                  <span className="text-emerald-800 font-black">காலை 10:00 மணி (10:00 AM)</span>
+                  <span className="text-slate-500 font-normal">Confirmed Time Slot:</span>
+                  <span className="text-emerald-800 font-black bg-emerald-100/70 px-2 py-0.5 rounded-lg">
+                    {finalConfirmedSlot}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-normal">Attending Doctor:</span>
@@ -169,7 +206,7 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  <Clock className="w-4 h-4 text-tealbrand-600" /> Appointment Details / நேரம் மற்றும் தேதி
+                  <Clock className="w-4 h-4 text-tealbrand-600" /> Appointment Details / தேதி & நேரம்
                 </div>
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2 font-medium">
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
@@ -177,17 +214,60 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
                     <span className="text-slate-900 font-bold">{followUp.reason || 'Post-procedure checkup'}</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                    <strong className="text-slate-700">Recommended Date / தேதி:</strong> 
+                    <strong className="text-slate-700">Scheduled Date / தேதி:</strong> 
                     <span className="text-tealbrand-700 font-bold">{followUp.scheduledDate}</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                    <strong className="text-slate-700">Suggested Time / நேரம்:</strong> 
-                    <span className="text-tealbrand-700 font-bold">காலை 10:00 மணி (10:00 AM Slot)</span>
+                    <strong className="text-slate-700">Selected Slot / நேரம்:</strong> 
+                    <span className="text-emerald-700 font-extrabold bg-emerald-100/60 px-2 py-0.5 rounded-lg">
+                      {selectedSlot}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <strong className="text-slate-700">Dentist / மருத்துவர்:</strong> 
                     <span className="text-slate-900">Dr. Tharma P, MDS</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Slot Chooser to prevent colliding into booked slots */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  <span>Available Time Slots ({followUp.scheduledDate})</span>
+                  <span className="text-[10px] text-emerald-600 lowercase font-medium">
+                    (Auto-selected next open slot)
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {slotsList.map(slot => {
+                    const isBooked = bookedSlots.includes(slot);
+                    const isSelected = selectedSlot === slot;
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        disabled={isBooked}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`py-2 px-1 text-[11px] rounded-xl font-bold border transition-all text-center relative ${
+                          isBooked
+                            ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through opacity-70'
+                            : isSelected
+                              ? 'bg-tealbrand-600 text-white border-tealbrand-600 shadow-md ring-2 ring-tealbrand-300'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-tealbrand-400 hover:bg-tealbrand-50/50'
+                        }`}
+                        title={isBooked ? 'Slot already booked by another patient' : 'Available slot'}
+                      >
+                        <div>{slot}</div>
+                        {isBooked ? (
+                          <div className="text-[9px] no-underline font-normal text-rose-500">Booked</div>
+                        ) : isSelected ? (
+                          <div className="text-[9px] font-bold text-teal-100 flex items-center justify-center gap-0.5">
+                            <Check className="w-2.5 h-2.5" /> Selected
+                          </div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -197,12 +277,12 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
                   type="button"
                   className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-tealbrand-600 to-brand-600 hover:opacity-95 text-white font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
                 >
-                  <CalendarCheck className="w-4 h-4" /> Confirm & Reserve My Appointment Now (முன்பதிவை உறுதி செய்)
+                  <CalendarCheck className="w-4 h-4" /> Confirm & Reserve My Slot at {selectedSlot} (முன்பதிவை உறுதி செய்)
                 </button>
               </div>
 
               <div className="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1 pt-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Verified SmileCare Dental Business Portal
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Verified SmileCare Dental Business Portal • No Double Booking
               </div>
             </div>
           )}

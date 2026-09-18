@@ -4,12 +4,17 @@ import { useData } from '../context/DataContext';
 import { WhatsAppSimulator } from '../components/whatsapp/WhatsAppSimulator';
 
 export const FollowUps = () => {
-  const { followUps, sendWhatsAppReminder, showToast, clinicProfile } = useData();
+  const { followUps, appointments, getNextAvailableSlot, sendWhatsAppReminder, showToast, clinicProfile } = useData();
   const [selectedFollowUp, setSelectedFollowUp] = useState(null);
+
+  const getSlotForFollowUp = (f) => {
+    return f.confirmedSlot || (getNextAvailableSlot ? getNextAvailableSlot(f.scheduledDate, f.preferredSlot || '10:00 AM') : (f.preferredSlot || '10:00 AM'));
+  };
 
   const handleOpenRealWhatsApp = (f) => {
     sendWhatsAppReminder(f.id);
     const cleanPhone = (f.patientPhone || '').replace(/[^0-9]/g, '');
+    const slot = getSlotForFollowUp(f);
 
     // Use deployed production domain if on localhost so external mobile recipients can open it
     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -31,7 +36,7 @@ export const FollowUps = () => {
       `SmileCare Dental Clinic-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:`,
       `📌 சிகிச்சை / காரணம்: ${f.reason || 'Post-procedure Checkup'}`,
       `📅 பரிந்துரைக்கப்பட்ட தேதி: ${formatDateToDMY(f.scheduledDate)}`,
-      `⏰ பரிந்துரைக்கப்பட்ட நேரம்: காலை 10:00 மணி`,
+      `⏰ பரிந்துரைக்கப்பட்ட நேரம்: ${slot}`,
       `உங்கள் Appointment-ஐ உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:`,
       `🔗 ${bookingLink}`,
       `நன்றி!`,
@@ -106,7 +111,13 @@ export const FollowUps = () => {
                     <td className="p-4 font-bold text-slate-900">{f.patientName}</td>
                     <td className="p-4 text-slate-600">{f.patientPhone}</td>
                     <td className="p-4 font-semibold text-brand-700">{f.reason}</td>
-                    <td className="p-4 font-bold text-slate-800">{f.scheduledDate}</td>
+                    <td className="p-4">
+                      <div className="font-bold text-slate-800">{f.scheduledDate}</div>
+                      <div className="text-[11px] text-tealbrand-700 font-semibold flex items-center gap-1 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-tealbrand-500"></span>
+                        Slot: {getSlotForFollowUp(f)}
+                      </div>
+                    </td>
                     <td className="p-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${f.status === 'Confirmed via WhatsApp' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                           f.whatsAppSent ? 'bg-tealbrand-50 text-tealbrand-700 border-tealbrand-200' :

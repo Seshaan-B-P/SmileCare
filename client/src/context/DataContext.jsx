@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { fetchApi } from '../services/api';
 import { useAuth } from './AuthContext';
+import { CLINIC_SLOTS, getNextAvailableSlot } from '../utils/dentalData';
 
 const DataContext = createContext();
 
@@ -371,6 +372,7 @@ export const DataProvider = ({ children }) => {
 
     let newFollowUp = null;
     if (consultationObj.followUpDate) {
+      const assignedSlot = getNextAvailableSlot(consultationObj.followUpDate, data.appointments, '10:00 AM');
       newFollowUp = {
         id: `FLP-${300 + data.followUps.length + 1}`,
         patientId: consultationObj.patientId,
@@ -378,9 +380,10 @@ export const DataProvider = ({ children }) => {
         patientPhone: consultationObj.patientPhone || '+1 (555) 321-7890',
         reason: consultationObj.treatmentPlan || 'Post-procedure checkup',
         scheduledDate: consultationObj.followUpDate,
+        preferredSlot: assignedSlot,
         status: 'Pending',
         whatsAppSent: false,
-        autoAssignedSlot: `${consultationObj.followUpDate} at 10:00 AM`
+        autoAssignedSlot: `${consultationObj.followUpDate} at ${assignedSlot}`
       };
     }
 
@@ -445,9 +448,22 @@ export const DataProvider = ({ children }) => {
     showToast('WhatsApp reminder sent with direct appointment booking link!');
   };
 
-  const confirmWhatsAppAutoBooking = (followUpId) => {
+  const confirmWhatsAppAutoBooking = (followUpId, requestedSlot = null) => {
     const targetFollowUp = data.followUps.find(f => f.id === followUpId);
-    if (!targetFollowUp) return;
+    if (!targetFollowUp) return null;
+
+    const bookedSlots = data.appointments
+      .filter(a => a.date === targetFollowUp.scheduledDate && a.status !== 'Cancelled')
+      .map(a => a.timeSlot);
+
+    let chosenSlot = requestedSlot;
+    if (!chosenSlot || bookedSlots.includes(chosenSlot)) {
+      chosenSlot = getNextAvailableSlot(
+        targetFollowUp.scheduledDate,
+        data.appointments,
+        targetFollowUp.preferredSlot || '10:00 AM'
+      );
+    }
 
     const newApt = {
       id: `APT-${800 + data.appointments.length + 1}`,
@@ -457,16 +473,16 @@ export const DataProvider = ({ children }) => {
       doctorId: 'usr_doc_1',
       doctorName: 'Dr. Tharma P',
       date: targetFollowUp.scheduledDate,
-      timeSlot: '10:00 AM',
+      timeSlot: chosenSlot,
       serviceName: targetFollowUp.reason,
       status: 'Scheduled',
       tokenNo: data.appointments.filter(a => a.date === targetFollowUp.scheduledDate).length + 1,
       type: 'Follow-up',
-      notes: 'Auto-assigned & confirmed via WhatsApp Reminder link'
+      notes: `Auto-assigned & confirmed via WhatsApp Reminder link (${chosenSlot})`
     };
 
-    const newLog = logActivity(`Auto-booked & confirmed slot for ${targetFollowUp.patientName} on ${targetFollowUp.scheduledDate}`, 'WhatsApp Bot', true);
-    const updatedFollowUps = data.followUps.map(f => f.id === followUpId ? { ...f, status: 'Confirmed via WhatsApp' } : f);
+    const newLog = logActivity(`Auto-booked & confirmed slot (${chosenSlot}) for ${targetFollowUp.patientName} on ${targetFollowUp.scheduledDate}`, 'WhatsApp Bot', true);
+    const updatedFollowUps = data.followUps.map(f => f.id === followUpId ? { ...f, status: 'Confirmed via WhatsApp', confirmedSlot: chosenSlot } : f);
     const updatedAppointments = [newApt, ...data.appointments];
     const updatedActivity = [newLog, ...data.activityLog];
 
@@ -479,7 +495,8 @@ export const DataProvider = ({ children }) => {
 
     setData(nextData);
     fetchApi('/sync', 'POST', nextData).catch(err => console.warn('Sync notice:', err));
-    showToast(`Appointment auto-booked & confirmed for ${targetFollowUp.patientName}!`);
+    showToast(`Appointment confirmed for ${targetFollowUp.patientName} at ${chosenSlot}!`);
+    return { followUp: { ...targetFollowUp, confirmedSlot: chosenSlot, status: 'Confirmed via WhatsApp' }, appointment: newApt };
   };
 
   const addStaffMember = (staffObj) => {
@@ -677,6 +694,8 @@ export const DataProvider = ({ children }) => {
       recordPayment,
       sendWhatsAppReminder,
       confirmWhatsAppAutoBooking,
+      clinicSlots: CLINIC_SLOTS,
+      getNextAvailableSlot: (date, pref) => getNextAvailableSlot(date, data.appointments, pref),
       addStaffMember,
       updateStaffPermissions,
       updateClinicProfile,

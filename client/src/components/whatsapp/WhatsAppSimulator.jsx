@@ -3,12 +3,15 @@ import { CalendarCheck, CheckCircle2, Sparkles, ArrowRight, ExternalLink } from 
 import { useData } from '../../context/DataContext';
 
 export const WhatsAppSimulator = ({ followUp, onClose }) => {
-  const { confirmWhatsAppAutoBooking } = useData();
+  const { appointments, confirmWhatsAppAutoBooking, getNextAvailableSlot } = useData();
   const [isBooked, setIsBooked] = useState(followUp.status === 'Confirmed via WhatsApp');
   const [lang, setLang] = useState('ta'); // Default language: Tamil ('ta')
 
+  const activeSlot = followUp.confirmedSlot || 
+    (getNextAvailableSlot ? getNextAvailableSlot(followUp.scheduledDate, followUp.preferredSlot || '10:00 AM') : (followUp.preferredSlot || '10:00 AM'));
+
   const handleBookNowClick = () => {
-    confirmWhatsAppAutoBooking(followUp.id);
+    confirmWhatsAppAutoBooking(followUp.id, activeSlot);
     setIsBooked(true);
   };
 
@@ -32,7 +35,7 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
     `SmileCare Dental Clinic-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:`,
     `📌 சிகிச்சை / காரணம்: ${followUp.reason || 'Post-procedure Checkup'}`,
     `📅 பரிந்துரைக்கப்பட்ட தேதி: ${formatDateToDMY(followUp.scheduledDate)}`,
-    `⏰ பரிந்துரைக்கப்பட்ட நேரம்: காலை 10:00 மணி`,
+    `⏰ பரிந்துரைக்கப்பட்ட நேரம்: ${activeSlot}`,
     `உங்கள் Appointment-ஐ உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:`,
     `🔗 ${bookingLink}`,
     `நன்றி!`,
@@ -46,7 +49,7 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
     ``,
     `📋 *Reason / Procedure:* ${followUp.reason}`,
     `🗓️ *Recommended Date:* ${followUp.scheduledDate}`,
-    `⏰ *Suggested Time:* 10:00 AM Slot`,
+    `⏰ *Suggested Time:* ${activeSlot} Slot`,
     ``,
     `Click below to confirm your appointment:`,
     `👉 ${bookingLink}`,
@@ -127,7 +130,7 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
                 <div className="bg-[#111B21] p-3 rounded-xl border border-[#222D34] text-xs space-y-1 font-medium">
                   <div>📌 <span className="text-slate-300">சிகிச்சை / காரணம்:</span> <strong className="text-white font-bold">{followUp.reason || 'Post-procedure Checkup'}</strong></div>
                   <div>📅 <span className="text-slate-300">பரிந்துரைக்கப்பட்ட தேதி:</span> <strong className="text-teal-300 font-bold">{formatDateToDMY(followUp.scheduledDate)}</strong></div>
-                  <div>⏰ <span className="text-slate-300">பரிந்துரைக்கப்பட்ட நேரம்:</span> <strong className="text-teal-300 font-bold">காலை 10:00 மணி</strong></div>
+                  <div>⏰ <span className="text-slate-300">பரிந்துரைக்கப்பட்ட நேரம்:</span> <strong className="text-teal-300 font-bold">{activeSlot}</strong></div>
                 </div>
 
                 <p className="text-[11px] text-slate-300">
@@ -156,7 +159,7 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
                 <div className="bg-[#111B21] p-3.5 rounded-xl border border-[#222D34] text-xs space-y-1.5">
                   <div><span className="text-slate-400">Reason:</span> <strong className="text-white">{followUp.reason}</strong></div>
                   <div><span className="text-slate-400">Recommended Date:</span> <strong className="text-teal-300 font-bold">{followUp.scheduledDate}</strong></div>
-                  <div><span className="text-slate-400">Suggested Time:</span> <strong className="text-teal-300 font-bold">10:00 AM Slot</strong></div>
+                  <div><span className="text-slate-400">Suggested Time:</span> <strong className="text-teal-300 font-bold">{activeSlot} Slot</strong></div>
                 </div>
 
                 <p className="text-[11px] text-slate-300">
@@ -168,7 +171,7 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
             <div className="pt-2 border-t border-[#2A3942]">
               {isBooked ? (
                 <div className="w-full py-2.5 bg-emerald-600/30 border border-emerald-500/50 rounded-xl text-center text-xs font-bold text-emerald-300 flex items-center justify-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {lang === 'ta' ? 'முன்பதிவு உறுதி செய்யப்பட்டது!' : 'Appointment Confirmed & Synced!'}
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {lang === 'ta' ? `முன்பதிவு உறுதி செய்யப்பட்டது (${activeSlot})!` : `Appointment Confirmed (${activeSlot}) & Synced!`}
                 </div>
               ) : (
                 <button
@@ -176,7 +179,7 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
                   className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-extrabold shadow-lg transition-all flex items-center justify-center gap-2 group"
                 >
                   <CalendarCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span>{lang === 'ta' ? 'இப்போதே முன்பதிவு செய்க (Book Now)' : 'Book Appointment Now'}</span>
+                  <span>{lang === 'ta' ? `இப்போதே முன்பதிவு செய்க (${activeSlot})` : `Book Slot (${activeSlot}) Now`}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}

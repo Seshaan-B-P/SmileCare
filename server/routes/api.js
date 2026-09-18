@@ -39,7 +39,7 @@ export const handleApiRoutes = async (req, res, db, pathname, body) => {
   }
 
   if (pathname === '/api/whatsapp/book-slot' && req.method === 'POST') {
-    return { success: true, data: confirmWhatsAppAutoBooking(body.followUpId, db) };
+    return { success: true, data: confirmWhatsAppAutoBooking(body.followUpId, db, body.requestedSlot) };
   }
 
   return { success: true, data: db };

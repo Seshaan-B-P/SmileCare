@@ -1,15 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
-import { STANDARD_SERVICES } from '../../utils/dentalData';
-import { Sparkles } from 'lucide-react';
+import { STANDARD_SERVICES, CLINIC_SLOTS, getNextAvailableSlot } from '../../utils/dentalData';
+import { useData } from '../../context/DataContext';
+import { Sparkles, Check } from 'lucide-react';
 
 export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointment = null }) => {
+  const { appointments } = useData();
   const todaySystemDate = new Date().toISOString().split('T')[0];
   const [patientId, setPatientId] = useState(targetAppointment?.patientId || (patients[0]?.id || ''));
   const [date, setDate] = useState(targetAppointment?.date || todaySystemDate);
   const [timeSlot, setTimeSlot] = useState(targetAppointment?.timeSlot || '10:00 AM');
   const [serviceName, setServiceName] = useState(targetAppointment?.serviceName || STANDARD_SERVICES[0].name);
   const [notes, setNotes] = useState(targetAppointment?.notes || '');
+
+  const bookedSlots = (appointments || [])
+    .filter(a => a.date === date && a.status !== 'Cancelled' && a.id !== targetAppointment?.id)
+    .map(a => a.timeSlot);
+
+  useEffect(() => {
+    // If current timeSlot is booked on this newly selected date, auto-select next free slot
+    if (bookedSlots.includes(timeSlot)) {
+      const free = getNextAvailableSlot(date, appointments, '10:00 AM');
+      setTimeSlot(free);
+    }
+  }, [date, appointments]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -30,10 +44,7 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
     onClose();
   };
 
-  const slots = [
-    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-    '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'
-  ];
+  const slots = CLINIC_SLOTS;
 
   return (
     <Modal
@@ -95,23 +106,38 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-            Available Time Slot
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+              Available Time Slot
+            </label>
+            <span className="text-[11px] text-tealbrand-700 font-medium">
+              Selected: <strong className="font-bold">{timeSlot}</strong>
+            </span>
+          </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {slots.map(s => (
-              <button
-                type="button"
-                key={s}
-                onClick={() => setTimeSlot(s)}
-                className={`py-2 rounded-xl text-xs font-bold border transition-all ${timeSlot === s
-                  ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            {slots.map(s => {
+              const isBooked = bookedSlots.includes(s);
+              const isSelected = timeSlot === s;
+              return (
+                <button
+                  type="button"
+                  key={s}
+                  disabled={isBooked}
+                  onClick={() => setTimeSlot(s)}
+                  className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all text-center ${
+                    isBooked
+                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed line-through opacity-70'
+                      : isSelected
+                        ? 'bg-brand-600 text-white border-brand-600 shadow-sm ring-2 ring-brand-300'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-brand-300'
                   }`}
-              >
-                {s}
-              </button>
-            ))}
+                  title={isBooked ? 'Slot already occupied' : 'Available slot'}
+                >
+                  <div>{s}</div>
+                  {isBooked && <div className="text-[9px] no-underline font-normal text-rose-500">Booked</div>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -138,9 +164,9 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
           </button>
           <button
             type="submit"
-            className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-brand-600 to-tealbrand-600 hover:opacity-95 shadow-md flex items-center gap-1.5"
+            className="px-5 py-2 rounded-xl text-xs font-extrabold bg-brand-600 hover:bg-brand-700 text-white shadow-md transition-all"
           >
-            <Sparkles className="w-4 h-4" /> Confirm Booking
+            {targetAppointment ? 'Confirm Reschedule' : 'Confirm Appointment'}
           </button>
         </div>
       </form>
