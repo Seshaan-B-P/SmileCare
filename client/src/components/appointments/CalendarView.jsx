@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
-import { Clock, Plus } from 'lucide-react';
+import { Clock, Plus, AlertTriangle, Mail } from 'lucide-react';
+import { useData } from '../../context/DataContext';
+import { ClinicClosureModal } from './ClinicClosureModal';
 
 export const CalendarView = ({ appointments, onBookClick, onRescheduleClick, onUpdateStatus }) => {
+  const { isClinicClosed, clinicProfile } = useData();
   const todaySystemDate = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todaySystemDate);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [showClosureModal, setShowClosureModal] = useState(false);
+
+  const closureInfo = isClinicClosed ? isClinicClosed(selectedDate) : { isClosed: false };
 
   const filteredAppointments = appointments.filter(a => {
     const matchesDate = a.date === selectedDate;
@@ -30,11 +36,10 @@ export const CalendarView = ({ appointments, onBookClick, onRescheduleClick, onU
             />
             <button
               onClick={() => setSelectedDate(todaySystemDate)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors border ${
-                selectedDate === todaySystemDate
-                  ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
-                  : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
-              }`}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors border ${selectedDate === todaySystemDate
+                ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
+                : 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200'
+                }`}
             >
               Today
             </button>
@@ -66,6 +71,38 @@ export const CalendarView = ({ appointments, onBookClick, onRescheduleClick, onU
         </div>
       </div>
 
+      {/* Clinic Closed Alert Banner */}
+      {closureInfo.isClosed && (
+        <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in shadow-xs">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <span className="p-2 bg-rose-100 text-rose-600 rounded-xl">
+              <AlertTriangle className="w-4 h-4" />
+            </span>
+            <div>
+              <div className="text-xs font-black text-rose-900 flex items-center gap-2">
+                <span>🔴 SmileCare Clinic is CLOSED on this Date</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 font-extrabold uppercase">
+                  {closureInfo.reason || 'Closed / Holiday'}
+                </span>
+              </div>
+              <div className="text-[11px] text-rose-700 mt-0.5">
+                Expected Reopening: <strong className="font-bold">{closureInfo.reopenDate || 'Next working day'}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setShowClosureModal(true)}
+              className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              Send Closure Email to Booked Patients ({filteredAppointments.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
         {timeSlots.map(slot => {
           const apts = filteredAppointments.filter(a => a.timeSlot === slot);
@@ -93,12 +130,11 @@ export const CalendarView = ({ appointments, onBookClick, onRescheduleClick, onU
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className={`px-2.5 py-1 text-xs font-extrabold rounded-lg border ${
-                          apt.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        <span className={`px-2.5 py-1 text-xs font-extrabold rounded-lg border ${apt.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                           apt.status === 'In Chair' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                          apt.status === 'Cancelled' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                          'bg-brand-50 text-brand-700 border-brand-200'
-                        }`}>
+                            apt.status === 'Cancelled' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              'bg-brand-50 text-brand-700 border-brand-200'
+                          }`}>
                           {apt.status}
                         </span>
 
@@ -128,6 +164,14 @@ export const CalendarView = ({ appointments, onBookClick, onRescheduleClick, onU
           );
         })}
       </div>
+
+      {showClosureModal && (
+        <ClinicClosureModal
+          isOpen={true}
+          initialDate={selectedDate}
+          onClose={() => setShowClosureModal(false)}
+        />
+      )}
     </div>
   );
 };

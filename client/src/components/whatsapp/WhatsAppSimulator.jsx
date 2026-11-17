@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CalendarCheck, CheckCircle2, Sparkles, ArrowRight, ExternalLink } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, Sparkles, ArrowRight, ExternalLink, Mail, MessageSquare } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
 export const WhatsAppSimulator = ({ followUp, onClose }) => {
@@ -19,6 +19,7 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
   const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const baseUrl = isLocal ? 'https://smile-care-rouge.vercel.app' : window.location.origin;
   const bookingLink = `${baseUrl}/#book?id=${followUp.id}`;
+  const chatLink = followUp.chatUrl || `${baseUrl}/#patient-chat?followUpId=${followUp.id}`;
 
   const formatDateToDMY = (dateStr) => {
     if (!dateStr) return '';
@@ -32,12 +33,18 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
   const formattedWhatsAppTextTamil = [
     `🦷 SmileCare பல் மருத்துவமனை – பரிசோதனை நினைவூட்டல்`,
     `வணக்கம் ${followUp.patientName} அவர்களே,`,
+    ``,
     `SmileCare Dental Clinic-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:`,
     `📌 சிகிச்சை / காரணம்: ${followUp.reason || 'Post-procedure Checkup'}`,
     `📅 பரிந்துரைக்கப்பட்ட தேதி: ${formatDateToDMY(followUp.scheduledDate)}`,
     `⏰ பரிந்துரைக்கப்பட்ட நேரம்: ${activeSlot}`,
-    `உங்கள் Appointment-ஐ உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:`,
-    `🔗 ${bookingLink}`,
+    ``,
+    `💬 மருத்துவரிடம் நேரடியாக உரையாட (Doctor Chat):`,
+    `👉 ${chatLink}`,
+    ``,
+    `🗓️ உங்கள் Appointment-ஐ உறுதி செய்ய:`,
+    `👉 ${bookingLink}`,
+    ``,
     `நன்றி!`,
     `SmileCare Speciality Dental Clinic 🦷`
   ].join('\n');
@@ -51,7 +58,10 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
     `🗓️ *Recommended Date:* ${followUp.scheduledDate}`,
     `⏰ *Suggested Time:* ${activeSlot} Slot`,
     ``,
-    `Click below to confirm your appointment:`,
+    `💬 *Chat with your Doctor (Secure Link):*`,
+    `👉 ${chatLink}`,
+    ``,
+    `🗓️ *Click below to confirm your appointment:*`,
     `👉 ${bookingLink}`,
     ``,
     `Thank you,`,
@@ -170,8 +180,14 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
 
             <div className="pt-2 border-t border-[#2A3942]">
               {isBooked ? (
-                <div className="w-full py-2.5 bg-emerald-600/30 border border-emerald-500/50 rounded-xl text-center text-xs font-bold text-emerald-300 flex items-center justify-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {lang === 'ta' ? `முன்பதிவு உறுதி செய்யப்பட்டது (${activeSlot})!` : `Appointment Confirmed (${activeSlot}) & Synced!`}
+                <div className="space-y-1.5">
+                  <div className="w-full py-2.5 bg-emerald-600/30 border border-emerald-500/50 rounded-xl text-center text-xs font-bold text-emerald-300 flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> {lang === 'ta' ? `முன்பதிவு உறுதி செய்யப்பட்டது (${activeSlot})!` : `Appointment Confirmed (${activeSlot}) & Synced!`}
+                  </div>
+                  <div className="text-[10px] text-teal-300 text-center flex items-center justify-center gap-1">
+                    <Mail className="w-3 h-3 text-teal-400" />
+                    <span>{lang === 'ta' ? 'உறுதிப்படுத்தல் மின்னஞ்சல் (Email) அனுப்பப்பட்டது' : 'Confirmation email sent'}</span>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -183,6 +199,20 @@ export const WhatsAppSimulator = ({ followUp, onClose }) => {
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
+            </div>
+
+            {/* Direct Doctor Chat Link */}
+            <div className="pt-2">
+              <a
+                href={chatLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-2 bg-teal-600/30 hover:bg-teal-600/50 border border-teal-500/40 text-teal-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>{lang === 'ta' ? 'மருத்துவருடன் இணையவழியில் உரையாட (Doctor Chat)' : 'Chat with Assigned Doctor'}</span>
+                <ExternalLink className="w-3 h-3 ml-0.5 opacity-70" />
+              </a>
             </div>
 
             <div className="text-[9px] text-slate-400 text-right">

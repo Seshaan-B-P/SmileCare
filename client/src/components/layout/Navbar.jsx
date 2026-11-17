@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { 
-  Search, 
-  Bell, 
-  User, 
-  LogOut, 
-  Calendar, 
-  Clock, 
+import {
+  Search,
+  Bell,
+  User,
+  LogOut,
+  Calendar,
+  Clock,
   Sparkles,
   Settings as SettingsIcon,
   ChevronDown,
@@ -14,14 +14,16 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { ClinicClosureModal } from '../appointments/ClinicClosureModal';
 
 export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
   const { currentUser, activeRole, logout, isDoctor, hasPermission } = useAuth();
-  const { patients, activityLog } = useData();
+  const { patients, activityLog, clinicProfile } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showClosureModal, setShowClosureModal] = useState(false);
 
   // Track last read notification to only show red dot on genuinely new notifications
   const [lastReadNotifId, setLastReadNotifId] = useState(() => {
@@ -101,15 +103,15 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
     }
   };
 
-  const filteredPatients = searchQuery.trim() 
+  const filteredPatients = searchQuery.trim()
     ? (patients || []).filter(p => {
-        const query = searchQuery.toLowerCase();
-        return (
-          (p.name || '').toLowerCase().includes(query) ||
-          (p.id || p.patientId || p._id || '').toLowerCase().includes(query) ||
-          (p.phone || '').includes(searchQuery)
-        );
-      })
+      const query = searchQuery.toLowerCase();
+      return (
+        (p.name || '').toLowerCase().includes(query) ||
+        (p.id || p.patientId || p._id || '').toLowerCase().includes(query) ||
+        (p.phone || '').includes(searchQuery)
+      );
+    })
     : [];
 
   const pageTitles = {
@@ -120,6 +122,7 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
     consultation: 'Clinical Consultation & Tooth Charting',
     billing: 'Billing, Invoices & Payment Ledger',
     whatsapp: 'WhatsApp Follow-Up & Reminder Hub',
+    messages: 'Doctor–Patient Clinical Messaging & Records',
     staff: 'Staff Roster & RBAC Permissions',
     reports: 'Clinical Reports & Financial Analytics',
     settings: 'Clinic Profile & WhatsApp Config'
@@ -181,8 +184,34 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
         )}
       </div>
 
-      {/* Right Controls: Notifications & Profile Pill */}
+      {/* Right Controls: Clinic Status, Notifications & Profile Pill */}
       <div className="flex items-center gap-3">
+        {/* Clinic Status Pill (Open / Closed) */}
+        <button
+          onClick={() => setShowClosureModal(true)}
+          className={`px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-2 border transition-all cursor-pointer shadow-xs ${clinicProfile?.clinicStatus === 'Closed'
+            ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 ring-2 ring-rose-200 animate-pulse'
+            : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+            }`}
+          title="Click to toggle Clinic Open/Closed status or dispatch closure emails to patients"
+        >
+          <span className={`w-2 h-2 rounded-full ${clinicProfile?.clinicStatus === 'Closed' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+          <span>{clinicProfile?.clinicStatus === 'Closed' ? 'Clinic Closed' : 'Clinic Open'}</span>
+        </button>
+
+        {/* Clinical Chat Quick Navigation */}
+        <button
+          onClick={() => setActiveTab('messages')}
+          className={`p-2.5 rounded-2xl relative transition-all border cursor-pointer ${
+            activeTab === 'messages'
+              ? 'bg-brand-50 text-brand-700 border-brand-200'
+              : 'text-slate-600 hover:bg-slate-100 border-transparent hover:border-slate-200'
+          }`}
+          title="Open Clinical Chat"
+        >
+          <Sparkles className="w-4 h-4 text-brand-600" />
+        </button>
+
         {/* Notifications Dropdown */}
         <div className="relative" ref={notifRef}>
           <button
@@ -193,9 +222,9 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
           >
             <Bell className="w-4.5 h-4.5" />
             {hasNewNotifications && (
-              <span 
-                id="notification-red-dot" 
-                className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-pulse" 
+              <span
+                id="notification-red-dot"
+                className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white animate-pulse"
               />
             )}
           </button>
@@ -223,22 +252,20 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
                   <button
                     type="button"
                     onClick={() => setNotificationTab('all')}
-                    className={`flex-1 py-1.5 px-2.5 text-[11px] font-bold rounded-xl transition-all cursor-pointer ${
-                      notificationTab === 'all'
-                        ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-black'
-                        : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                    }`}
+                    className={`flex-1 py-1.5 px-2.5 text-[11px] font-bold rounded-xl transition-all cursor-pointer ${notificationTab === 'all'
+                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-black'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
+                      }`}
                   >
                     All Activities ({activityLog?.length || 0})
                   </button>
                   <button
                     type="button"
                     onClick={() => setNotificationTab('staff')}
-                    className={`flex-1 py-1.5 px-2.5 text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      notificationTab === 'staff'
-                        ? 'bg-amber-500 text-white shadow-xs font-black'
-                        : 'text-amber-800 hover:bg-amber-100/60 bg-amber-50 border border-amber-200/60'
-                    }`}
+                    className={`flex-1 py-1.5 px-2.5 text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${notificationTab === 'staff'
+                      ? 'bg-amber-500 text-white shadow-xs font-black'
+                      : 'text-amber-800 hover:bg-amber-100/60 bg-amber-50 border border-amber-200/60'
+                      }`}
                   >
                     <UserCog className="w-3.5 h-3.5" />
                     Staff Actions ({staffActivities.length})
@@ -252,15 +279,14 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
                     const isNew = notificationTab === 'all' && index < unreadCount;
                     const isStaff = act.isStaff || act.role === 'Staff' || act.user?.toLowerCase().includes('staff');
                     return (
-                      <div 
-                        key={act.id} 
-                        className={`px-4 py-2.5 transition-colors ${
-                          isStaff 
-                            ? 'bg-amber-50/30 hover:bg-amber-50/70 border-l-2 border-amber-400' 
-                            : isNew 
-                              ? 'bg-brand-50/40 hover:bg-brand-50/70' 
-                              : 'hover:bg-slate-50'
-                        }`}
+                      <div
+                        key={act.id}
+                        className={`px-4 py-2.5 transition-colors ${isStaff
+                          ? 'bg-amber-50/30 hover:bg-amber-50/70 border-l-2 border-amber-400'
+                          : isNew
+                            ? 'bg-brand-50/40 hover:bg-brand-50/70'
+                            : 'hover:bg-slate-50'
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="text-xs font-bold text-slate-800 leading-snug">{act.action}</div>
@@ -368,6 +394,13 @@ export const Navbar = ({ activeTab, setActiveTab, onSelectPatient }) => {
           )}
         </div>
       </div>
+
+      {showClosureModal && (
+        <ClinicClosureModal
+          isOpen={true}
+          onClose={() => setShowClosureModal(false)}
+        />
+      )}
     </header>
   );
 };

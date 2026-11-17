@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Sparkles, ExternalLink, Eye } from 'lucide-react';
+import { Sparkles, ExternalLink, Eye, MessageSquare } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { WhatsAppSimulator } from '../components/whatsapp/WhatsAppSimulator';
+import { generateChatToken } from '../services/api';
 
 export const FollowUps = () => {
   const { followUps, appointments, getNextAvailableSlot, sendWhatsAppReminder, showToast, clinicProfile } = useData();
@@ -11,7 +12,7 @@ export const FollowUps = () => {
     return f.confirmedSlot || (getNextAvailableSlot ? getNextAvailableSlot(f.scheduledDate, f.preferredSlot || '10:00 AM') : (f.preferredSlot || '10:00 AM'));
   };
 
-  const handleOpenRealWhatsApp = (f) => {
+  const handleOpenRealWhatsApp = async (f) => {
     sendWhatsAppReminder(f.id);
     const cleanPhone = (f.patientPhone || '').replace(/[^0-9]/g, '');
     const slot = getSlotForFollowUp(f);
@@ -20,6 +21,25 @@ export const FollowUps = () => {
     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const baseUrl = isLocal ? 'https://smile-care-rouge.vercel.app' : window.location.origin;
     const bookingLink = `${baseUrl}/#book?id=${f.id}`;
+
+    // Generate unique, secure patient communication link
+    let chatLink = `${baseUrl}/#patient-chat?followUpId=${f.id}`;
+    try {
+      const tokenRes = await generateChatToken({
+        patientId: f.patientId,
+        patientName: f.patientName,
+        patientPhone: f.patientPhone,
+        followUpId: f.id,
+        contextReason: f.reason || 'Post-procedure consultation',
+        doctorId: 'usr_doc_1',
+        doctorName: 'Dr. Tharma P, MDS'
+      });
+      if (tokenRes && tokenRes.success && tokenRes.chatUrl) {
+        chatLink = tokenRes.chatUrl;
+      }
+    } catch (e) {
+      console.warn('Could not generate chat token:', e.message);
+    }
 
     const formatDateToDMY = (dateStr) => {
       if (!dateStr) return '';
@@ -33,12 +53,18 @@ export const FollowUps = () => {
     const formattedMessage = [
       `🦷 SmileCare பல் மருத்துவமனை – பரிசோதனை நினைவூட்டல்`,
       `வணக்கம் ${f.patientName} அவர்களே,`,
+      ``,
       `SmileCare Dental Clinic-ல் இருந்து உங்களுக்கான அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல்:`,
       `📌 சிகிச்சை / காரணம்: ${f.reason || 'Post-procedure Checkup'}`,
       `📅 பரிந்துரைக்கப்பட்ட தேதி: ${formatDateToDMY(f.scheduledDate)}`,
       `⏰ பரிந்துரைக்கப்பட்ட நேரம்: ${slot}`,
-      `உங்கள் Appointment-ஐ உறுதி செய்ய கீழே உள்ள இணைப்பை கிளிக் செய்யவும்:`,
-      `🔗 ${bookingLink}`,
+      ``,
+      `💬 மருத்துவரிடம் நேரடியாக உரையாட (Chat with Doctor):`,
+      `👉 ${chatLink}`,
+      ``,
+      `🗓️ உங்கள் Appointment-ஐ உறுதி செய்ய:`,
+      `👉 ${bookingLink}`,
+      ``,
       `நன்றி!`,
       `SmileCare Speciality Dental Clinic 🦷`
     ].join('\n');
@@ -48,7 +74,7 @@ export const FollowUps = () => {
       navigator.clipboard.writeText(formattedMessage).catch(() => {});
     }
     if (showToast) {
-      showToast('Opening WhatsApp... (Message copied to clipboard)');
+      showToast('Opening WhatsApp... (Message & Doctor Chat link copied to clipboard)');
     }
 
     // Use web.whatsapp.com on PC/Desktop to prevent Windows protocol emoji corruption
@@ -60,8 +86,24 @@ export const FollowUps = () => {
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleOpenSimulator = (f) => {
+  const handleOpenSimulator = async (f) => {
     sendWhatsAppReminder(f.id);
+    // Request chat token if available
+    try {
+      const res = await generateChatToken({
+        patientId: f.patientId,
+        patientName: f.patientName,
+        patientPhone: f.patientPhone,
+        followUpId: f.id,
+        contextReason: f.reason || 'Post-procedure consultation',
+        doctorId: 'usr_doc_1',
+        doctorName: 'Dr. Tharma P, MDS'
+      });
+      if (res && res.success && res.chatUrl) {
+        setSelectedFollowUp({ ...f, chatUrl: res.chatUrl });
+        return;
+      }
+    } catch (e) {}
     setSelectedFollowUp(f);
   };
 

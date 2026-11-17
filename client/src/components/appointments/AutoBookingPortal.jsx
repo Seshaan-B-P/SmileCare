@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Smile, CalendarCheck, CheckCircle2, Sparkles, Clock, User, ShieldCheck, Phone, MapPin, AlertCircle, X, Check } from 'lucide-react';
+import { Smile, CalendarCheck, CheckCircle2, Sparkles, Clock, User, ShieldCheck, Phone, MapPin, AlertCircle, X, Check, Mail } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
 export const AutoBookingPortal = ({ followUpId, onClose }) => {
-  const { followUps, appointments, clinicSlots, getNextAvailableSlot, confirmWhatsAppAutoBooking, clinicProfile } = useData();
+  const { 
+    followUps, 
+    appointments, 
+    patients,
+    clinicSlots, 
+    getNextAvailableSlot, 
+    confirmWhatsAppAutoBooking, 
+    clinicProfile,
+    isClinicClosed,
+    sendClinicClosedEmail 
+  } = useData();
   const [isLoading, setIsLoading] = useState(!followUps || followUps.length === 0);
 
   const cleanTargetId = (followUpId || '').trim();
@@ -11,6 +21,7 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
 
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState('10:00 AM');
+  const [patientEmail, setPatientEmail] = useState('');
 
   // Compute booked slots on the target date
   const bookedSlots = (appointments || [])
@@ -51,9 +62,22 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
     }
   }, [followUp, appointments]);
 
+  useEffect(() => {
+    if (followUp) {
+      const patObj = (patients || []).find(p => p.id === followUp.patientId || p.phone === followUp.patientPhone || p.name === followUp.patientName);
+      if (patObj?.email) {
+        setPatientEmail(patObj.email);
+      } else if (followUp.patientEmail || followUp.email) {
+        setPatientEmail(followUp.patientEmail || followUp.email);
+      }
+    }
+  }, [followUp, patients]);
+
+  const closureCheck = isClinicClosed ? isClinicClosed(followUp?.scheduledDate) : { isClosed: false };
+
   const handleConfirm = () => {
     if (followUp?.id) {
-      confirmWhatsAppAutoBooking(followUp.id, selectedSlot);
+      confirmWhatsAppAutoBooking(followUp.id, selectedSlot, patientEmail);
       setIsConfirmed(true);
     }
   };
@@ -172,6 +196,21 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
                 </div>
               </div>
 
+              {/* Confirmation Email Delivered Badge */}
+              <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-left space-y-1 animate-fade-in">
+                <div className="font-extrabold text-emerald-900 flex items-center gap-1.5">
+                  <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>முன்பதிவு ரசீது மின்னஞ்சல் அனுப்பப்பட்டது (Receipt Emailed)</span>
+                </div>
+                <div className="text-[11px] text-emerald-700">
+                  {patientEmail ? (
+                    <span>உறுதிப்படுத்தல் விபரங்கள் மற்றும் Token ரசீது <strong>{patientEmail}</strong> முகவரிக்கு அனுப்பப்பட்டுள்ளது.</span>
+                  ) : (
+                    <span>உறுதிப்படுத்தல் தகவல் மற்றும் Token விபரங்கள் பதிவு செய்யப்பட்டுள்ளது.</span>
+                  )}
+                </div>
+              </div>
+
               <div className="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200 text-left space-y-1">
                 <div className="font-extrabold text-slate-800 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-brand-600 shrink-0" /> Clinic Location:
@@ -190,6 +229,18 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
             </div>
           ) : (
             <div className="space-y-4">
+              {closureCheck?.isClosed && (
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs space-y-1 animate-fade-in">
+                  <div className="font-extrabold text-rose-900 flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>மருத்துவமனை விடுமுறை அறிவிப்பு (Clinic Closed Notice)</span>
+                  </div>
+                  <p className="text-[11px] text-rose-800">
+                    SmileCare பல் மருத்துவமனை <strong>{followUp.scheduledDate}</strong> அன்று செயல்படாது ({closureCheck.reason || 'Closed'}). நீங்கள் உறுதி செய்யும் போது இதுகுறித்து விரிவான மின்னஞ்சல் அறிவிப்பு (Email) அனுப்பப்படும்.
+                  </p>
+                </div>
+              )}
+
               <div className="p-3 bg-tealbrand-50 rounded-2xl border border-tealbrand-200 flex items-center gap-2 text-xs font-bold text-tealbrand-900">
                 <Sparkles className="w-4 h-4 text-tealbrand-600 shrink-0" />
                 <span>அடுத்தகட்ட பல் பரிசோதனை நினைவூட்டல் (Dental Follow-up Notice)</span>
@@ -269,6 +320,26 @@ export const AutoBookingPortal = ({ followUpId, onClose }) => {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Patient Email Input for Auto-Booking Confirmation Receipt */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-tealbrand-600" />
+                    மின்னஞ்சல் முகவரி (Email for Booking Receipt)
+                  </span>
+                  <span className="text-[10px] text-tealbrand-700 font-bold lowercase">
+                    (Auto email confirmation)
+                  </span>
+                </div>
+                <input
+                  type="email"
+                  value={patientEmail}
+                  onChange={(e) => setPatientEmail(e.target.value)}
+                  placeholder="patient@example.com (மின்னஞ்சல் உள்ளிடவும்)"
+                  className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-tealbrand-500/20"
+                />
               </div>
 
               <div className="pt-2">

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { uploadAvatar, removeAvatar } from '../services/api';
 
 const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&auto=format&fit=crop&q=80',
@@ -80,7 +81,7 @@ export const DoctorProfile = () => {
 
   const specialtiesList = specialtiesText.split(',').map(s => s.trim()).filter(Boolean);
 
-  const applyAvatarUpdate = (newAvatarUrl) => {
+  const applyAvatarUpdate = async (newAvatarUrl) => {
     setAvatar(newAvatarUrl);
     updateCurrentUser({ avatar: newAvatarUrl });
     if (isDoctor) {
@@ -88,8 +89,45 @@ export const DoctorProfile = () => {
     } else if (updateStaffProfile) {
       updateStaffProfile(doctorData.id, { avatar: newAvatarUrl });
     }
+
+    try {
+      await uploadAvatar({
+        base64Data: newAvatarUrl,
+        targetType: 'user',
+        targetId: doctorData.id || currentUser?.id,
+        requesterId: currentUser?.id,
+        requesterRole: currentUser?.role || 'Doctor'
+      });
+    } catch (e) {
+      console.warn('Backend avatar sync:', e.message);
+    }
+
     if (showToast) {
       showToast('Profile photo updated successfully!');
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!confirm('Revert to default profile avatar?')) return;
+    setAvatar('');
+    updateCurrentUser({ avatar: '' });
+    if (isDoctor) {
+      updateDoctorProfile(doctorData.id || 'usr_doc_1', { avatar: '' });
+    } else if (updateStaffProfile) {
+      updateStaffProfile(doctorData.id, { avatar: '' });
+    }
+
+    try {
+      await removeAvatar({
+        targetType: 'user',
+        targetId: doctorData.id || currentUser?.id,
+        requesterId: currentUser?.id,
+        requesterRole: currentUser?.role || 'Doctor'
+      });
+    } catch (e) {}
+
+    if (showToast) {
+      showToast('Profile photo removed.');
     }
   };
 
@@ -255,12 +293,23 @@ export const DoctorProfile = () => {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="px-4 py-2.5 rounded-xl text-xs font-extrabold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm transition-all flex items-center gap-2"
+                className="px-4 py-2.5 rounded-xl text-xs font-extrabold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm transition-all flex items-center gap-2 cursor-pointer"
                 title="Upload new profile picture"
               >
                 <Camera className="w-4 h-4 text-brand-600" />
                 <span>{isUploading ? 'Uploading...' : 'Change Photo'}</span>
               </button>
+
+              {avatar && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  className="p-2.5 rounded-xl text-xs font-extrabold bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 shadow-sm transition-all cursor-pointer"
+                  title="Remove Profile Photo"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={() => setIsEditing(!isEditing)}
                 className={`px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 ${isEditing

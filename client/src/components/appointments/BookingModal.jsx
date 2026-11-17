@@ -5,13 +5,15 @@ import { useData } from '../../context/DataContext';
 import { Sparkles, Check } from 'lucide-react';
 
 export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointment = null }) => {
-  const { appointments } = useData();
+  const { appointments, isClinicClosed } = useData();
   const todaySystemDate = new Date().toISOString().split('T')[0];
   const [patientId, setPatientId] = useState(targetAppointment?.patientId || (patients[0]?.id || ''));
   const [date, setDate] = useState(targetAppointment?.date || todaySystemDate);
   const [timeSlot, setTimeSlot] = useState(targetAppointment?.timeSlot || '10:00 AM');
   const [serviceName, setServiceName] = useState(targetAppointment?.serviceName || STANDARD_SERVICES[0].name);
   const [notes, setNotes] = useState(targetAppointment?.notes || '');
+
+  const closureInfo = isClinicClosed ? isClinicClosed(date) : { isClosed: false };
 
   const bookedSlots = (appointments || [])
     .filter(a => a.date === date && a.status !== 'Cancelled' && a.id !== targetAppointment?.id)
@@ -105,6 +107,21 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
           </div>
         </div>
 
+        {/* Clinic Closed Alert in Booking Modal */}
+        {closureInfo.isClosed && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs flex items-start gap-2.5 animate-fade-in">
+            <span className="text-base leading-none">⚠️</span>
+            <div>
+              <strong className="font-extrabold text-rose-900 block">
+                Clinic is CLOSED on {date} ({closureInfo.reason || 'Closed / Holiday'})
+              </strong>
+              <span className="text-[11px] text-rose-700">
+                Notice: An automated closure notification email will be dispatched to this patient upon booking.
+              </span>
+            </div>
+          </div>
+        )}
+
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -140,6 +157,21 @@ export const BookingModal = ({ patients, isOpen, onClose, onBook, targetAppointm
             })}
           </div>
         </div>
+
+        {/* Clinic Closed Alert in Booking Modal */}
+        {closureInfo.isClosed && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs flex items-start gap-2.5 animate-fade-in">
+            <span className="text-base leading-none">⚠️</span>
+            <div>
+              <strong className="font-extrabold text-rose-900 block">
+                Clinic is CLOSED on {date} ({closureInfo.reason || 'Closed / Holiday'})
+              </strong>
+              <span className="text-[11px] text-rose-700">
+                Notice: An automated closure notification email will be dispatched to this patient upon booking.
+              </span>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">

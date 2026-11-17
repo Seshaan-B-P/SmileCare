@@ -17,11 +17,47 @@ import { StaffManagement } from './pages/StaffManagement';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { DoctorProfile } from './pages/DoctorProfile';
+import { Communication } from './pages/Communication';
 
 import { ShieldAlert } from 'lucide-react';
 import { BookingModal } from './components/appointments/BookingModal';
 import { InvoiceModal } from './components/billing/InvoiceModal';
 import { AutoBookingPortal } from './components/appointments/AutoBookingPortal';
+import { PatientChatPortal } from './components/chat/PatientChatPortal';
+
+const extractChatToken = () => {
+  try {
+    if (typeof window === 'undefined') return null;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+
+    // 1. Check Hash: #patient-chat?token=... or #chat?token=...
+    if (hash.includes('chat')) {
+      if (hash.includes('?')) {
+        const params = new URLSearchParams(hash.split('?')[1]);
+        const token = params.get('token') || params.get('chatToken') || params.get('chat');
+        if (token) return token;
+      }
+      if (hash.includes('&')) {
+        const params = new URLSearchParams(hash.split('&')[1]);
+        const token = params.get('token') || params.get('chatToken');
+        if (token) return token;
+      }
+      const parts = hash.split('/');
+      if (parts.length > 1 && parts[1]) {
+        return parts[1].replace(/[^a-zA-Z0-9_-]/g, '');
+      }
+    }
+
+    // 2. Check Search params: ?token=... or ?chatToken=...
+    if (search) {
+      const params = new URLSearchParams(search);
+      const token = params.get('token') || params.get('chatToken');
+      if (token) return token;
+    }
+  } catch (e) {}
+  return null;
+};
 
 const extractBookingId = () => {
   try {
@@ -63,18 +99,24 @@ const AppContent = () => {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [selectedChatPatientId, setSelectedChatPatientId] = useState(null);
   const [navHistory, setNavHistory] = useState([]);
 
   const [showGlobalBooking, setShowGlobalBooking] = useState(false);
   const [showGlobalBilling, setShowGlobalBilling] = useState(false);
 
   const [patientPortalFollowUpId, setPatientPortalFollowUpId] = useState(extractBookingId);
+  const [patientChatToken, setPatientChatToken] = useState(extractChatToken);
 
   useEffect(() => {
     const handleUrlChange = () => {
       const detectedId = extractBookingId();
       if (detectedId) {
         setPatientPortalFollowUpId(detectedId);
+      }
+      const detectedToken = extractChatToken();
+      if (detectedToken) {
+        setPatientChatToken(detectedToken);
       }
     };
 
@@ -86,6 +128,24 @@ const AppContent = () => {
       window.removeEventListener('popstate', handleUrlChange);
     };
   }, []);
+
+  if (patientChatToken) {
+    return (
+      <PatientChatPortal
+        token={patientChatToken}
+        onClose={() => {
+          if (window.location.hash.includes('chat')) {
+            window.location.hash = '';
+          }
+          if (window.location.search.includes('token=')) {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+          setPatientChatToken(null);
+        }}
+      />
+    );
+  }
 
   if (patientPortalFollowUpId) {
     return (
@@ -205,6 +265,10 @@ const AppContent = () => {
                 onBookAppointment={handleBookForPatient}
                 onStartConsultation={handleStartConsultation}
                 onCreateInvoice={() => setShowGlobalBilling(true)}
+                onOpenChat={(p) => {
+                  setSelectedChatPatientId(p?.id || p?._id);
+                  handleNavigate('messages', null);
+                }}
               />
             ) : renderRestrictedNotice('Patient Directory')
           ) : (
@@ -269,6 +333,10 @@ const AppContent = () => {
                 isDoctor || hasPermission('whatsapp') ? (
                   <FollowUps />
                 ) : renderRestrictedNotice('WhatsApp Reminders')
+              )}
+
+              {activeTab === 'messages' && (
+                <Communication initialPatientId={selectedChatPatientId} />
               )}
 
               {activeTab === 'staff' && (

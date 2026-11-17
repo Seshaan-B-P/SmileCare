@@ -11,10 +11,14 @@ import {
   Cloud,
   Database,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  Send,
+  AlertTriangle
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { downloadJSON } from '../utils/exportUtils';
+import { ClinicClosureModal } from '../components/appointments/ClinicClosureModal';
 
 export const Settings = () => {
   const { 
@@ -30,7 +34,8 @@ export const Settings = () => {
     patients,
     appointments,
     consultations,
-    invoices
+    invoices,
+    sendClinicClosedEmail
   } = useData();
 
   const [name, setName] = useState(clinicProfile.name);
@@ -41,7 +46,36 @@ export const Settings = () => {
   const [registrationNo, setRegistrationNo] = useState(clinicProfile.registrationNo);
   const [defaultConsultationFee, setDefaultConsultationFee] = useState(clinicProfile.defaultConsultationFee);
   const [whatsAppPhoneNumber, setWhatsAppPhoneNumber] = useState(clinicProfile.whatsAppPhoneNumber);
+  const [clinicStatus, setClinicStatus] = useState(clinicProfile.clinicStatus || 'Open');
+  const [closedReason, setClosedReason] = useState(clinicProfile.closedReason || 'Doctor Emergency Leave / Public Holiday');
+  const [reopenDate, setReopenDate] = useState(clinicProfile.reopenDate || 'Tomorrow 9:00 AM');
+  const [autoEmailOnClosure, setAutoEmailOnClosure] = useState(clinicProfile.autoEmailOnClosure !== false);
+  const [showClosureModal, setShowClosureModal] = useState(false);
+  const [isSendingTestMail, setIsSendingTestMail] = useState(false);
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  const handleTestSendMail = async () => {
+    setIsSendingTestMail(true);
+    try {
+      const res = await sendClinicClosedEmail({
+        patientEmail: email || 'chennai@smilecare.in',
+        patientName: 'Test Patient (Admin Verification)',
+        date: new Date().toISOString().split('T')[0],
+        timeSlot: '10:00 AM',
+        reason: closedReason,
+        reopenDate: reopenDate
+      });
+      if (res && res.success) {
+        if (showToast) showToast(`✅ Test email processed! Delivered to ${email || 'chennai@smilecare.in'}`);
+      } else {
+        alert(`Test email notice: ${res?.error || 'Email error'}`);
+      }
+    } catch (err) {
+      alert(`Test email failed: ${err.message}`);
+    } finally {
+      setIsSendingTestMail(false);
+    }
+  };
 
   const handleManualCloudSync = async () => {
     setIsSyncingCloud(true);
@@ -64,8 +98,13 @@ export const Settings = () => {
       email,
       registrationNo,
       defaultConsultationFee: parseFloat(defaultConsultationFee) || 500,
-      whatsAppPhoneNumber
+      whatsAppPhoneNumber,
+      clinicStatus,
+      closedReason,
+      reopenDate,
+      autoEmailOnClosure
     });
+    if (showToast) showToast('Clinic settings & operational status saved successfully!');
   };
 
   const handleExportBackup = () => {
@@ -192,6 +231,113 @@ export const Settings = () => {
           </div>
         </div>
 
+        {/* Clinic Operational Status & Automated Email Closure System */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-soft space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-2">
+            <div>
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-rose-600" /> Clinic Operational Status & Email Closure System
+              </h3>
+              <p className="text-xs text-slate-500">Automatically send email notifications to patients when the clinic is closed or on emergency leave</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowClosureModal(true)}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" /> Broadcast Closure Email
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Current Operating Status</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setClinicStatus('Open')}
+                  className={`p-2.5 rounded-xl text-xs font-extrabold border transition-all text-center ${
+                    clinicStatus === 'Open'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-2 ring-emerald-200 shadow-xs'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  🟢 Open (Normal Operations)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClinicStatus('Closed')}
+                  className={`p-2.5 rounded-xl text-xs font-extrabold border transition-all text-center ${
+                    clinicStatus === 'Closed'
+                      ? 'bg-rose-50 text-rose-700 border-rose-300 ring-2 ring-rose-200 shadow-xs'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  🔴 Closed (Leave / Holiday)
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Expected Reopening Time</label>
+              <input
+                type="text"
+                value={reopenDate}
+                onChange={(e) => setReopenDate(e.target.value)}
+                placeholder="e.g. Tomorrow 9:00 AM"
+                className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Reason for Clinic Closure</label>
+            <input
+              type="text"
+              value={closedReason}
+              onChange={(e) => setClosedReason(e.target.value)}
+              placeholder="e.g. Doctor Emergency Leave / Public Holiday"
+              className="w-full p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-900"
+            />
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="autoEmailClosureCheckbox"
+                checked={autoEmailOnClosure}
+                onChange={(e) => setAutoEmailOnClosure(e.target.checked)}
+                className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+              />
+              <label htmlFor="autoEmailClosureCheckbox" className="font-bold text-slate-800 cursor-pointer">
+                Automatically email scheduled patients when clinic status is set to Closed
+              </label>
+            </div>
+
+            <button
+              type="button"
+              disabled={isSendingTestMail}
+              onClick={handleTestSendMail}
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg font-bold text-[11px] flex items-center gap-1.5 transition-colors self-end sm:self-auto cursor-pointer"
+            >
+              {isSendingTestMail ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-3.5 h-3.5 text-brand-600" /> Send Test Closure Email
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
         <div className="flex justify-end">
           <button
             type="submit"
@@ -304,6 +450,13 @@ export const Settings = () => {
           </button>
         </div>
       </div>
+
+      {showClosureModal && (
+        <ClinicClosureModal
+          isOpen={true}
+          onClose={() => setShowClosureModal(false)}
+        />
+      )}
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { QuickActions } from '../components/dashboard/QuickActions';
 import { RevenueChart } from '../components/dashboard/RevenueChart';
 import { AppointmentChart } from '../components/dashboard/AppointmentChart';
 import { QueueWidget } from '../components/appointments/QueueWidget';
+import { ClinicStatusWidget } from '../components/dashboard/ClinicStatusWidget';
 
 export const Dashboard = ({ setActiveTab, onOpenAddPatient, onOpenNewApt, onOpenConsultation, onOpenBilling, onStartConsultation }) => {
   const { patients, appointments, followUps, invoices, activityLog, updateAppointmentStatus } = useData();
@@ -84,6 +85,9 @@ export const Dashboard = ({ setActiveTab, onOpenAddPatient, onOpenNewApt, onOpen
           colorTheme="emerald"
         />
       </div>
+
+      {/* Clinic Operating Status & Automated Email Notification Controller */}
+      <ClinicStatusWidget />
 
       <div>
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-3">

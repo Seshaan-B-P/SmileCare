@@ -15,10 +15,13 @@ import {
   MapPin,
   Save,
   Check,
-  UserCheck
+  UserCheck,
+  MessageSquare
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Modal } from '../components/common/Modal';
+import { AvatarUploader } from '../components/common/AvatarUploader';
+import { PatientDocumentManager } from '../components/documents/PatientDocumentManager';
 
 const getPatientRegistrationMessage = (p) => {
   const patientName = p?.name || '';
@@ -40,7 +43,7 @@ const getPatientRegistrationMessage = (p) => {
   ].join('\n');
 };
 
-export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartConsultation, onCreateInvoice }) => {
+export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartConsultation, onCreateInvoice, onOpenChat }) => {
   const { consultations, invoices, dentalCharts, addPatientDocument, updatePatient, showToast } = useData();
   const [activeTab, setActiveTab] = useState('medical');
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -256,6 +259,15 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
 
         <div className="flex items-center gap-2 flex-wrap">
           <button
+            onClick={() => {
+              if (onOpenChat) onOpenChat(currentPatient);
+            }}
+            className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            title="Open Doctor-Patient Chat"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-tealbrand-300" /> Message Patient
+          </button>
+          <button
             onClick={handleOpenEditModal}
             className="px-3.5 py-1.5 bg-white text-slate-700 hover:bg-slate-50 hover:text-brand-600 rounded-xl text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
             title="Edit Patient Details"
@@ -290,40 +302,18 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
           />
 
           <div className="flex items-start gap-4">
-            <div 
-              className="relative group cursor-pointer shrink-0" 
-              onClick={() => patientPhotoInputRef.current?.click()}
-              title="Click to update patient photo"
-            >
-              {(currentAvatar || currentPatient.avatar) ? (
-                <img
-                  src={currentAvatar || currentPatient.avatar}
-                  alt={currentPatient.name}
-                  onError={() => setCurrentAvatar('')}
-                  className="w-16 h-16 rounded-2xl object-cover shadow-md ring-2 ring-brand-500/30 group-hover:brightness-90 transition-all"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-tealbrand-500 text-white font-black text-2xl flex items-center justify-center shadow-md group-hover:opacity-90 transition-all">
-                  {(currentPatient.name || 'P').split(' ').map(n => n[0]).join('')}
-                </div>
-              )}
-              
-              <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera className="w-5 h-5" />
-              </div>
-
-              <button 
-                type="button" 
-                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-slate-900/90 hover:bg-brand-600 text-white border border-white flex items-center justify-center shadow transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  patientPhotoInputRef.current?.click();
-                }}
-                title="Change Photo"
-              >
-                <Camera className="w-3 h-3" />
-              </button>
-            </div>
+            <AvatarUploader
+              avatarUrl={currentAvatar || currentPatient.avatar}
+              name={currentPatient.name}
+              targetType="patient"
+              targetId={currentPatientId}
+              size="md"
+              onAvatarChange={(newUrl) => {
+                setCurrentAvatar(newUrl);
+                updatePatient(currentPatientId, { avatar: newUrl });
+                setCurrentPatient(prev => ({ ...prev, avatar: newUrl }));
+              }}
+            />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">{currentPatient.name}</h1>
@@ -526,41 +516,11 @@ export const PatientProfile = ({ patient, onBack, onBookAppointment, onStartCons
       )}
 
       {activeTab === 'documents' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-soft space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-              Diagnostic X-Rays & Attached Files
-            </h4>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="px-3.5 py-1.5 bg-brand-50 text-brand-700 rounded-xl text-xs font-bold border border-brand-200 flex items-center gap-1 cursor-pointer"
-            >
-              <Upload className="w-3.5 h-3.5" /> Upload Document
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {currentPatient.documents && currentPatient.documents.length > 0 ? (
-              currentPatient.documents.map(doc => (
-                <div key={doc.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 group">
-                  <img
-                    src={doc.url}
-                    alt={doc.name}
-                    className="w-full h-32 object-cover rounded-xl border border-slate-200 group-hover:scale-[1.02] transition-transform"
-                  />
-                  <div className="text-xs font-bold text-slate-900 truncate">{doc.name}</div>
-                  <div className="text-[10px] text-slate-500 flex justify-between">
-                    <span>{doc.type}</span>
-                    <span>{doc.date}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-8 text-xs text-slate-400">
-                No uploaded X-Ray or lab document. Click Upload Document above.
-              </div>
-            )}
-          </div>
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-soft">
+          <PatientDocumentManager 
+            patientId={currentPatientId} 
+            patientName={currentPatient.name} 
+          />
         </div>
       )}
 

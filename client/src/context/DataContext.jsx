@@ -27,7 +27,12 @@ const EMPTY_DATABASE = {
     slotDurationMinutes: 30,
     defaultConsultationFee: 500,
     whatsAppApiStatus: 'Connected',
-    whatsAppPhoneNumber: '+919840123456'
+    whatsAppPhoneNumber: '+919840123456',
+    clinicStatus: 'Open',
+    closedReason: '',
+    reopenDate: '',
+    closedDates: [],
+    autoEmailOnClosure: true
   }
 };
 
@@ -70,7 +75,7 @@ export const DataProvider = ({ children }) => {
           payload = { ...payload, patients: parsed.patients };
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       const res = await fetchApi('/sync', 'POST', payload);
@@ -135,12 +140,12 @@ export const DataProvider = ({ children }) => {
 
           try {
             localStorage.setItem('smilecare_db_v2', JSON.stringify(updated));
-          } catch (e) {}
+          } catch (e) { }
 
           // Sync doctor and user credentials from MongoDB Atlas cloud directly to AuthContext ONLY IF currently logged-in as Doctor
           const savedUser = localStorage.getItem('smilecare_user');
           let currentSession = null;
-          try { currentSession = savedUser ? JSON.parse(savedUser) : null; } catch (e) {}
+          try { currentSession = savedUser ? JSON.parse(savedUser) : null; } catch (e) { }
           const isCurrentSessionDoctor = currentSession?.role === 'Doctor' || currentSession?.email === 'doctor@smilecare.com';
 
           const cloudDoc = res.data.currentUser || (liveUsers || []).find(u => u.role === 'Doctor' || u.id === 'usr_doc_1');
@@ -262,7 +267,7 @@ export const DataProvider = ({ children }) => {
       };
       try {
         localStorage.setItem('smilecare_db_v2', JSON.stringify(nextData));
-      } catch (e) {}
+      } catch (e) { }
       fetchApi('/sync', 'POST', nextData).then(res => {
         if (res && res.success) {
           setCloudSyncStatus(s => ({ ...s, connected: true, lastSync: new Date().toLocaleTimeString() }));
@@ -291,23 +296,269 @@ export const DataProvider = ({ children }) => {
     showToast(`Uploaded document: ${docObj.name}`);
   };
 
+  const isClinicClosed = (targetDate = null) => {
+    const profile = data.clinicProfile || {};
+    const status = profile.clinicStatus || 'Open';
+    const todayStr = new Date().toISOString().split('T')[0];
+    const checkDate = targetDate || todayStr;
+
+    // Check specific closed dates array
+    if (Array.isArray(profile.closedDates) && profile.closedDates.includes(checkDate)) {
+      return {
+        isClosed: true,
+        reason: profile.closedReason || 'Scheduled Holiday / Clinic Closed',
+        reopenDate: profile.reopenDate || 'Next working day at 9:00 AM'
+      };
+    }
+
+    // If general clinic status is Closed, today is definitely closed
+    if (status === 'Closed') {
+      if (!targetDate || checkDate === todayStr) {
+        return {
+          isClosed: true,
+          reason: profile.closedReason || 'Clinic Temporarily Closed',
+          reopenDate: profile.reopenDate || 'Tomorrow 9:00 AM'
+        };
+      }
+    }
+
+    return { isClosed: false, reason: '', reopenDate: '' };
+  };
+
+  const sendClinicClosedEmail = async ({
+    patientEmail,
+    patientName,
+    date,
+    timeSlot,
+    reason,
+    reopenDate,
+    customNote
+  }) => {
+    const profile = data.clinicProfile || {};
+    const finalReason = reason || profile.closedReason || 'Doctor Emergency Leave / Public Holiday';
+    const finalReopen = reopenDate || profile.reopenDate || 'Tomorrow 9:00 AM';
+
+    try {
+      const payload = {
+        to: patientEmail,
+        patientName: patientName || 'Valued Patient',
+        date: date || new Date().toISOString().split('T')[0],
+        timeSlot: timeSlot || '',
+        reason: finalReason,
+        reopenDate: finalReopen,
+        doctorName: 'Dr. Tharma P, MDS',
+        clinicName: profile.name || 'SmileCare Speciality Dental Clinic & Implant Centre',
+        clinicPhone: profile.phone || '+91 44 2621 8899',
+        clinicAddress: profile.address || 'No. 42, 2nd Avenue, Anna Nagar West, Chennai',
+        customNote: customNote || ''
+      };
+
+      const res = await fetchApi('/send-email', 'POST', payload);
+      if (res && res.success) {
+        const newLog = logActivity(`Dispatched Clinic Closed Email notice to ${patientName} (${patientEmail})`);
+        setData(prev => ({
+          ...prev,
+          activityLog: [newLog, ...prev.activityLog]
+        }));
+        showToast(`✉️ Clinic Closed Email sent to ${patientName} (${patientEmail})`);
+        return { success: true, ...res };
+      } else {
+        showToast(`Email notice: ${res?.error || 'Could not dispatch email'}`);
+        return { success: false, error: res?.error };
+      }
+    } catch (err) {
+      showToast(`Email error: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const notifyPatientsOfClosure = async ({
+    date,
+    reason,
+    reopenDate,
+    customNote,
+    patientIds = null
+  }) => {
+    const profile = data.clinicProfile || {};
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const finalReason = reason || profile.closedReason || 'Doctor Emergency Leave / Public Holiday';
+    const finalReopen = reopenDate || profile.reopenDate || 'Tomorrow 9:00 AM';
+
+    try {
+      const res = await fetchApi('/clinic/close-notice', 'POST', {
+        date: targetDate,
+        reason: finalReason,
+        reopenDate: finalReopen,
+        customNote,
+        patientIds
+      });
+
+      if (res && res.success) {
+        const count = res.sentCount || 0;
+        const newLog = logActivity(`Broadcasted Clinic Closed Email notice to ${count} patient(s) on ${targetDate}`);
+        setData(prev => ({
+          ...prev,
+          activityLog: [newLog, ...prev.activityLog]
+        }));
+        showToast(`✉️ Clinic Closed Emails successfully sent to ${count} patient(s)!`);
+        return res;
+      }
+      return { success: false, error: res?.error || 'Failed to dispatch closure notices' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const toggleClinicStatus = async (newStatus, reason = '', reopenDate = '', autoNotify = false, targetDate = null) => {
+    const profile = data.clinicProfile || {};
+    const todayStr = new Date().toISOString().split('T')[0];
+    const closureDate = targetDate || todayStr;
+
+    let updatedClosedDates = profile.closedDates || [];
+    if (newStatus === 'Closed') {
+      if (!updatedClosedDates.includes(closureDate)) {
+        updatedClosedDates = [...updatedClosedDates, closureDate];
+      }
+    } else {
+      updatedClosedDates = updatedClosedDates.filter(d => d !== closureDate);
+    }
+
+    const updatedProfile = {
+      ...profile,
+      clinicStatus: newStatus,
+      closedReason: newStatus === 'Closed' ? (reason || profile.closedReason || 'Doctor Emergency Leave / Public Holiday') : '',
+      reopenDate: newStatus === 'Closed' ? (reopenDate || profile.reopenDate || 'Tomorrow 9:00 AM') : '',
+      closedDates: updatedClosedDates
+    };
+
+    const newLog = logActivity(`Changed Clinic Status to "${newStatus}"${newStatus === 'Closed' ? ` (Reason: ${updatedProfile.closedReason})` : ''}`);
+
+    setData(prev => ({
+      ...prev,
+      clinicProfile: updatedProfile,
+      activityLog: [newLog, ...prev.activityLog]
+    }));
+
+    await syncToCloud({ ...data, clinicProfile: updatedProfile });
+
+    if (newStatus === 'Closed') {
+      showToast(`🔴 Clinic marked as CLOSED: ${updatedProfile.closedReason}`);
+      if (autoNotify) {
+        await notifyPatientsOfClosure({
+          date: closureDate,
+          reason: updatedProfile.closedReason,
+          reopenDate: updatedProfile.reopenDate
+        });
+      }
+    } else {
+      showToast(`🟢 Clinic status updated to OPEN!`);
+    }
+
+    return updatedProfile;
+  };
+
+  const sendBookingConfirmationEmail = async ({
+    patientEmail,
+    patientName,
+    date,
+    timeSlot,
+    tokenNo = 1,
+    serviceName = 'Routine Dental Consultation',
+    doctorName = 'Dr. Tharma P, MDS',
+    isClosed = false,
+    closureReason = '',
+    notes = ''
+  }) => {
+    const profile = data.clinicProfile || {};
+    try {
+      const payload = {
+        to: patientEmail,
+        patientName: patientName || 'Valued Patient',
+        date: date || new Date().toISOString().split('T')[0],
+        timeSlot: timeSlot || '10:00 AM',
+        tokenNo: tokenNo || 1,
+        serviceName: serviceName || 'Routine Dental Consultation',
+        doctorName: doctorName || 'Dr. Tharma P, MDS',
+        clinicName: profile.name || 'SmileCare Speciality Dental Clinic & Implant Centre',
+        clinicPhone: profile.phone || '+91 44 2621 8899',
+        clinicAddress: profile.address || 'No. 42, 2nd Avenue, Anna Nagar West, Chennai',
+        isClosed: !!isClosed,
+        closureReason: closureReason || '',
+        notes: notes || ''
+      };
+
+      const res = await fetchApi('/send-booking-email', 'POST', payload);
+      if (res && res.success) {
+        const newLog = logActivity(`Dispatched Auto-Booking Confirmation Email to ${patientName} (${patientEmail}) for slot ${timeSlot} on ${date}`);
+        setData(prev => ({
+          ...prev,
+          activityLog: [newLog, ...prev.activityLog]
+        }));
+        showToast(`✉️ Auto-booking email sent to ${patientName} (${patientEmail})`);
+        return { success: true, ...res };
+      } else {
+        return { success: false, error: res?.error };
+      }
+    } catch (err) {
+      console.warn('Booking email error:', err.message);
+      return { success: false, error: err.message };
+    }
+  };
+
   const bookAppointment = (aptObj) => {
     const newId = `APT-${800 + data.appointments.length + 1}`;
     const tokenNo = data.appointments.filter(a => a.date === aptObj.date).length + 1;
+
+    const closureCheck = isClinicClosed(aptObj.date);
+    const isClosed = closureCheck.isClosed;
+
     const newApt = {
       id: newId,
       status: 'Scheduled',
       tokenNo,
+      isBookedDuringClosure: isClosed,
+      clinicClosedReason: isClosed ? closureCheck.reason : null,
       ...aptObj
     };
 
-    const newLog = logActivity(`Booked appointment for ${newApt.patientName} (Token #${tokenNo}, ${newApt.timeSlot || 'Scheduled'})`);
+    const newLog = logActivity(`Booked appointment for ${newApt.patientName} (Token #${tokenNo}, ${newApt.timeSlot || 'Scheduled'})${isClosed ? ' [Clinic Closed Notice]' : ''}`);
     setData(prev => ({
       ...prev,
       appointments: [newApt, ...prev.appointments],
       activityLog: [newLog, ...prev.activityLog]
     }));
-    showToast(`Appointment booked for ${newApt.patientName} (Token #${tokenNo})`);
+
+    const patObj = data.patients.find(p => p.id === aptObj.patientId || p.name === aptObj.patientName);
+    const recipientEmail = patObj?.email || aptObj.patientEmail;
+
+    if (isClosed) {
+      showToast(`⚠️ Appointment registered, but Clinic is CLOSED on ${aptObj.date}. Sending notification email...`);
+      if (recipientEmail && recipientEmail.includes('@')) {
+        sendClinicClosedEmail({
+          patientEmail: recipientEmail,
+          patientName: aptObj.patientName || patObj?.name,
+          date: aptObj.date,
+          timeSlot: aptObj.timeSlot,
+          reason: closureCheck.reason,
+          reopenDate: closureCheck.reopenDate
+        });
+      }
+    } else {
+      if (recipientEmail && recipientEmail.includes('@')) {
+        sendBookingConfirmationEmail({
+          patientEmail: recipientEmail,
+          patientName: aptObj.patientName || patObj?.name,
+          date: aptObj.date,
+          timeSlot: aptObj.timeSlot,
+          tokenNo,
+          serviceName: aptObj.serviceName,
+          doctorName: aptObj.doctorName || 'Dr. Tharma P, MDS',
+          isClosed: false
+        });
+      }
+      showToast(`Appointment booked for ${newApt.patientName} (Token #${tokenNo})`);
+    }
+
     return newApt;
   };
 
@@ -448,7 +699,7 @@ export const DataProvider = ({ children }) => {
     showToast('WhatsApp reminder sent with direct appointment booking link!');
   };
 
-  const confirmWhatsAppAutoBooking = (followUpId, requestedSlot = null) => {
+  const confirmWhatsAppAutoBooking = async (followUpId, requestedSlot = null, customEmail = null) => {
     const targetFollowUp = data.followUps.find(f => f.id === followUpId);
     if (!targetFollowUp) return null;
 
@@ -465,6 +716,10 @@ export const DataProvider = ({ children }) => {
       );
     }
 
+    const tokenNo = data.appointments.filter(a => a.date === targetFollowUp.scheduledDate).length + 1;
+    const closureCheck = isClinicClosed(targetFollowUp.scheduledDate);
+    const isClosed = closureCheck.isClosed;
+
     const newApt = {
       id: `APT-${800 + data.appointments.length + 1}`,
       patientId: targetFollowUp.patientId,
@@ -476,12 +731,14 @@ export const DataProvider = ({ children }) => {
       timeSlot: chosenSlot,
       serviceName: targetFollowUp.reason,
       status: 'Scheduled',
-      tokenNo: data.appointments.filter(a => a.date === targetFollowUp.scheduledDate).length + 1,
+      tokenNo,
       type: 'Follow-up',
-      notes: `Auto-assigned & confirmed via WhatsApp Reminder link (${chosenSlot})`
+      isBookedDuringClosure: isClosed,
+      clinicClosedReason: isClosed ? closureCheck.reason : null,
+      notes: `Auto-assigned & confirmed via WhatsApp / Web Auto-Booking link (${chosenSlot})`
     };
 
-    const newLog = logActivity(`Auto-booked & confirmed slot (${chosenSlot}) for ${targetFollowUp.patientName} on ${targetFollowUp.scheduledDate}`, 'WhatsApp Bot', true);
+    const newLog = logActivity(`Auto-booked & confirmed slot (${chosenSlot}) for ${targetFollowUp.patientName} on ${targetFollowUp.scheduledDate}`, 'Online Auto-Booking', true);
     const updatedFollowUps = data.followUps.map(f => f.id === followUpId ? { ...f, status: 'Confirmed via WhatsApp', confirmedSlot: chosenSlot } : f);
     const updatedAppointments = [newApt, ...data.appointments];
     const updatedActivity = [newLog, ...data.activityLog];
@@ -495,7 +752,42 @@ export const DataProvider = ({ children }) => {
 
     setData(nextData);
     fetchApi('/sync', 'POST', nextData).catch(err => console.warn('Sync notice:', err));
-    showToast(`Appointment confirmed for ${targetFollowUp.patientName} at ${chosenSlot}!`);
+
+    // Resolve patient email: customEmail -> patient in database -> followUp record
+    const patObj = data.patients.find(p => p.id === targetFollowUp.patientId || p.phone === targetFollowUp.patientPhone || p.name === targetFollowUp.patientName);
+    const emailToSend = customEmail || patObj?.email || targetFollowUp.patientEmail || targetFollowUp.email;
+
+    if (emailToSend && emailToSend.includes('@')) {
+      await sendBookingConfirmationEmail({
+        patientEmail: emailToSend,
+        patientName: targetFollowUp.patientName,
+        date: targetFollowUp.scheduledDate,
+        timeSlot: chosenSlot,
+        tokenNo,
+        serviceName: targetFollowUp.reason || 'Dental Follow-up',
+        doctorName: 'Dr. Tharma P, MDS',
+        isClosed,
+        closureReason: isClosed ? closureCheck.reason : ''
+      });
+    }
+
+    // Also notify clinic admin copy
+    const clinicNoticeEmail = data.clinicProfile?.email || 'chennai@smilecare.in';
+    if (clinicNoticeEmail && clinicNoticeEmail !== emailToSend) {
+      sendBookingConfirmationEmail({
+        patientEmail: clinicNoticeEmail,
+        patientName: `${targetFollowUp.patientName} (Clinic Admin Copy)`,
+        date: targetFollowUp.scheduledDate,
+        timeSlot: chosenSlot,
+        tokenNo,
+        serviceName: `${targetFollowUp.reason} [Online Auto-Booking Alert]`,
+        doctorName: 'Dr. Tharma P, MDS',
+        isClosed,
+        closureReason: isClosed ? closureCheck.reason : ''
+      }).catch(() => { });
+    }
+
+    showToast(`Appointment confirmed for ${targetFollowUp.patientName} at ${chosenSlot}! Confirmation email dispatched.`);
     return { followUp: { ...targetFollowUp, confirmedSlot: chosenSlot, status: 'Confirmed via WhatsApp' }, appointment: newApt };
   };
 
@@ -536,7 +828,7 @@ export const DataProvider = ({ children }) => {
   const updateStaffPermissions = (staffId, permissions) => {
     const targetStaff = data.users?.find(u => u.id === staffId);
     const newLog = logActivity(`Updated module permissions for staff: ${targetStaff?.name || staffId}`, null, false);
-    
+
     setData(prev => {
       const nextUsers = prev.users.map(u => u.id === staffId ? { ...u, permissions } : u);
       const nextData = {
@@ -544,10 +836,10 @@ export const DataProvider = ({ children }) => {
         users: nextUsers,
         activityLog: [newLog, ...prev.activityLog]
       };
-      
+
       try {
         localStorage.setItem('smilecare_db_v2', JSON.stringify(nextData));
-      } catch (e) {}
+      } catch (e) { }
 
       fetchApi('/sync', 'POST', nextData).then(res => {
         if (res && res.success) {
@@ -638,7 +930,7 @@ export const DataProvider = ({ children }) => {
 
       try {
         localStorage.setItem('smilecare_db_v2', JSON.stringify(nextData));
-      } catch (e) {}
+      } catch (e) { }
 
       fetchApi('/sync', 'POST', nextData).then(res => {
         if (res && res.success) {
@@ -701,6 +993,11 @@ export const DataProvider = ({ children }) => {
       updateClinicProfile,
       updateDoctorProfile,
       updateStaffProfile,
+      isClinicClosed,
+      sendClinicClosedEmail,
+      sendBookingConfirmationEmail,
+      notifyPatientsOfClosure,
+      toggleClinicStatus,
       restoreDatabase,
       resetToSeed,
       clearAllData,
