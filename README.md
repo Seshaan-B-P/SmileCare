@@ -831,3 +831,5 @@ Contributions, suggestions, and improvements are welcome.
 Built with ❤️ using React, Node.js & MongoDB.
 
 </div>
+#   S m i l e c a r e  
+ 
